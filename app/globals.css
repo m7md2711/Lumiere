@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-slate-50 text-slate-800 antialiased; }
+  :focus-visible { @apply outline-none ring-2 ring-clinic-500 ring-offset-2 ring-offset-white; }
+  [dir="rtl"] { font-feature-settings: "liga" 1; }
+}
+
+@layer components {
+  .card { @apply rounded-2xl border border-slate-200 bg-white shadow-sm; }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5
+           text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary { @apply bg-clinic-600 text-white hover:bg-clinic-700 active:bg-clinic-800; }
+  .btn-ghost   { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+  .btn-lg      { @apply w-full px-5 py-4 text-base; }
+  .field {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base
+           text-slate-900 placeholder:text-slate-400 focus:border-clinic-500;
+  }
+  .label { @apply mb-1.5 block text-sm font-medium text-slate-700; }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-clinic-50 px-3 py-1
+           text-xs font-medium text-clinic-700 ring-1 ring-clinic-100;
+  }
+  .tabular { font-variant-numeric: tabular-nums; }
+}
+
+/* Print: posters only, no chrome. */
+@media print {
+  .no-print { display: none !important; }
+  .poster { page-break-after: always; break-after: page; }
+  .poster:last-child { page-break-after: auto; break-after: auto; }
+  body { background: #fff; }
+}
