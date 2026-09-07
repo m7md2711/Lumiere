@@ -38,14 +38,14 @@ export default async function CaseDetail({ params }: { params: { id: string } })
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <a href={`tel:${c.mobile}`} className="btn btn-ghost">📞 Call {c.mobile}</a>
+          <a href={`tel:${c.mobile}`} className="btn btn-ghost">Call {c.mobile}</a>
           <a
             href={`https://wa.me/${wa}`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-ghost"
           >
-            💬 WhatsApp
+            WhatsApp
           </a>
         </div>
       </header>

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { IconChart, IconList, IconQr, IconBuilding } from "@/components/Icons";
 
 const items = [
-  { href: "/admin/cases", label: "Cases", icon: "📋" },
-  { href: "/admin/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/admin/branches", label: "Branches", icon: "🏥" },
-  { href: "/admin/qr", label: "QR", icon: "🔳" },
+  { href: "/admin/cases", label: "Cases", Icon: IconList },
+  { href: "/admin/dashboard", label: "Dashboard", Icon: IconChart },
+  { href: "/admin/branches", label: "Branches", Icon: IconBuilding },
+  { href: "/admin/qr", label: "QR", Icon: IconQr },
 ];
 
 export default function NavLinks({ variant }: { variant: "sidebar" | "tabs" }) {
@@ -26,7 +27,7 @@ export default function NavLinks({ variant }: { variant: "sidebar" | "tabs" }) {
               isActive(it.href) ? "text-clinic-700" : "text-slate-400",
             ].join(" ")}
           >
-            <span aria-hidden className="text-lg leading-none">{it.icon}</span>
+            <it.Icon className="h-[22px] w-[22px]" />
             {it.label}
           </Link>
         ))}
@@ -47,7 +48,7 @@ export default function NavLinks({ variant }: { variant: "sidebar" | "tabs" }) {
               : "text-slate-600 hover:bg-slate-50",
           ].join(" ")}
         >
-          <span aria-hidden>{it.icon}</span>
+          <it.Icon className="h-[18px] w-[18px]" />
           {it.label}
         </Link>
       ))}

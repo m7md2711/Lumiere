@@ -3,6 +3,7 @@ import { getBranches, listCases, type CaseFilters } from "@/lib/cases";
 import { categoryLabel, priorityLabel, statusLabel } from "@/lib/i18n";
 import { CATEGORIES, PRIORITIES, STATUSES, isOverdue } from "@/lib/types";
 import { OverduePill, PriorityPill, StatusPill, shortDate } from "@/components/Pills";
+import { IconMic } from "@/components/Icons";
 import Filters from "./Filters";
 
 export const dynamic = "force-dynamic";
@@ -70,7 +71,7 @@ export default async function CasesPage({
               <PriorityPill priority={c.priority} />
               {isOverdue(c) ? <OverduePill /> : null}
               {c.voice_url ? (
-                <span className="chip" title="Has a voice note">🎤 Voice</span>
+                <span className="chip" title="Has a voice note"><IconMic className="h-3.5 w-3.5" /> Voice</span>
               ) : null}
               <span className="ms-auto text-xs text-slate-400">{shortDate(c.created_at)}</span>
             </div>
@@ -109,7 +110,11 @@ export default async function CasesPage({
                 <td className="px-4 py-3 text-slate-600">{c.branches?.name_en ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">
                   {categoryLabel(c.category, "en")}
-                  {c.voice_url ? <span title="Has a voice note"> 🎤</span> : null}
+                  {c.voice_url ? (
+                    <span title="Has a voice note" className="ms-1 inline-block align-text-bottom text-clinic-600">
+                      <IconMic className="h-4 w-4" />
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-4 py-3"><PriorityPill priority={c.priority} /></td>
                 <td className="px-4 py-3"><StatusPill status={c.status} /></td>

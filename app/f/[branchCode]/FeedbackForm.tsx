@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LogoMark } from "@/components/Logo";
-import { categoryLabel, categoryIcons, t } from "@/lib/i18n";
+import { categoryLabel, t } from "@/lib/i18n";
+import { categoryIconMap, IconMic } from "@/components/Icons";
 import { CATEGORIES } from "@/lib/types";
 import type { Category, ContactMethod, Lang, PreferredTime } from "@/lib/types";
 
@@ -209,6 +210,7 @@ export default function FeedbackForm({
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {CATEGORIES.map((c) => {
               const active = category === c;
+              const Icon = categoryIconMap[c];
               return (
                 <button
                   key={c}
@@ -225,7 +227,16 @@ export default function FeedbackForm({
                       : "border-slate-200 bg-slate-100 hover:border-clinic-300",
                   ].join(" ")}
                 >
-                  <span aria-hidden className="text-xl">{categoryIcons[c]}</span>
+                  <span
+                    className={[
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-colors",
+                      active
+                        ? "bg-clinic-100 text-clinic-700 ring-clinic-300"
+                        : "bg-slate-200 text-clinic-600 ring-slate-300",
+                    ].join(" ")}
+                  >
+                    <Icon />
+                  </span>
                   <span className="text-sm font-medium leading-snug text-slate-800">
                     {categoryLabel(c, lang)}
                   </span>
@@ -278,7 +289,7 @@ export default function FeedbackForm({
                     voice.start();
                   }}
                 >
-                  <span aria-hidden>●</span> {L.record}
+                  <IconMic className="h-4 w-4" /> {L.record}
                 </button>
               ) : null}
 
