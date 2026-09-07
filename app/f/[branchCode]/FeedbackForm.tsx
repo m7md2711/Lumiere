@@ -135,13 +135,13 @@ export default function FeedbackForm({
     return (
       <Shell rtl={rtl} lang={lang} onLang={setLang} L={L} hideToggle>
         <div className="card p-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-clinic-50 text-2xl">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-clinic-50 text-2xl text-clinic-700 ring-1 ring-clinic-300">
             ✓
           </div>
           <h1 className="text-xl font-semibold text-slate-900">{L.thankYouTitle}</h1>
           <p className="mt-2 text-sm text-slate-600">{L.thankYouBody}</p>
 
-          <div className="mt-6 rounded-2xl bg-clinic-50 p-5 ring-1 ring-clinic-100">
+          <div className="mt-6 rounded-2xl bg-clinic-50 p-5 ring-1 ring-clinic-300">
             <div className="text-xs font-medium uppercase tracking-wide text-clinic-700">
               {L.yourReference}
             </div>
@@ -222,7 +222,7 @@ export default function FeedbackForm({
                     "flex min-h-[64px] items-center gap-3 rounded-2xl border p-4 text-start transition-colors",
                     active
                       ? "border-clinic-600 bg-clinic-50 ring-2 ring-clinic-200"
-                      : "border-slate-200 bg-white hover:border-clinic-300",
+                      : "border-slate-200 bg-slate-100 hover:border-clinic-300",
                   ].join(" ")}
                 >
                   <span aria-hidden className="text-xl">{categoryIcons[c]}</span>
@@ -251,7 +251,7 @@ export default function FeedbackForm({
             }}
           />
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-100 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-slate-800">{L.orRecord}</div>
@@ -263,7 +263,7 @@ export default function FeedbackForm({
             </div>
 
             {voice.error ? (
-              <p className="mt-3 text-sm text-amber-700">
+              <p className="alert-warn mt-3">
                 {voice.error === "unsupported" ? L.micUnsupported : L.micDenied}
               </p>
             ) : null}
@@ -373,7 +373,7 @@ export default function FeedbackForm({
       ) : null}
 
       {error ? (
-        <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <p role="alert" className="alert-error mt-4">
           {error}
         </p>
       ) : null}
@@ -425,31 +425,28 @@ function Shell({
 }) {
   return (
     <div dir={rtl ? "rtl" : "ltr"} className="min-h-screen bg-slate-50">
-      <header className="bg-gradient-to-b from-clinic-700 to-clinic-800 px-5 pb-8 pt-6 text-white">
+      <header className="border-b border-clinic-200 bg-gradient-to-b from-slate-100 to-slate-50 px-5 pb-8 pt-6">
         <div className="mx-auto flex max-w-lg items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-white/95">
-              <LogoMark size={34} />
-            </span>
-            <span className="text-sm font-semibold tracking-wide">{L.brand}</span>
+            <LogoMark size={30} />
           </div>
           {!hideToggle ? (
             <button
               type="button"
               onClick={() => onLang(lang === "ar" ? "en" : "ar")}
-              className="rounded-full border border-white/30 px-3.5 py-1.5 text-sm font-medium hover:bg-white/10"
+              className="rounded-full border border-clinic-300 px-3.5 py-1.5 text-sm font-medium text-clinic-700 hover:bg-clinic-50"
             >
               {L.langLabel}
             </button>
           ) : null}
         </div>
         <div className="mx-auto mt-6 max-w-lg">
-          <h1 className="text-2xl font-bold leading-snug">{L.heroTitle}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-white/80">{L.heroSub}</p>
+          <h1 className="bg-gradient-to-r from-gold-light via-gold-mid to-gold-deep bg-clip-text text-2xl font-bold leading-snug text-transparent">{L.heroTitle}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">{L.heroSub}</p>
         </div>
       </header>
 
-      <main className="mx-auto -mt-4 max-w-lg rounded-t-3xl bg-slate-50 px-5 pt-6">
+      <main className="mx-auto max-w-lg px-5 pt-6">
         {children}
       </main>
     </div>
@@ -501,7 +498,7 @@ function Choice<V extends string>({
               "min-h-[52px] rounded-xl border px-3 py-3 text-sm font-medium transition-colors",
               value === o.v
                 ? "border-clinic-600 bg-clinic-50 text-clinic-800 ring-2 ring-clinic-200"
-                : "border-slate-300 bg-white text-slate-700 hover:border-clinic-300",
+                : "border-slate-300 bg-slate-200 text-slate-700 hover:border-clinic-300",
             ].join(" ")}
           >
             {o.label}

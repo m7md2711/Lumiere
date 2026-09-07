@@ -1,26 +1,32 @@
+/* eslint-disable @next/next/no-img-element */
+
+/**
+ * The clinic's own wordmark, served from /lumiere-logo.svg. It carries its own
+ * gold gradient, so it is used as an image rather than recoloured.
+ */
 export function LogoMark({ size = 32 }: { size?: number }) {
+  // The asset is 170×55; keep that ratio and let `size` drive the height.
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" role="img" aria-label="Lumiere Skin Clinic">
-      <rect width="32" height="32" rx="7" fill="currentColor" />
-      <path
-        d="M16 7.5c-3.6 0-6.5 2.9-6.5 6.5 0 4.9 6.5 10.5 6.5 10.5s6.5-5.6 6.5-10.5c0-3.6-2.9-6.5-6.5-6.5Z"
-        fill="#fff" opacity="0.16"
-      />
-      <path d="M16 8.4 17.4 13l4.6 1.4-4.6 1.4-1.4 4.6-1.4-4.6-4.6-1.4 4.6-1.4 1.4-4.6Z" fill="#fff" />
-    </svg>
+    <img
+      src="/lumiere-logo.svg"
+      alt="Lumiere Clinic & Cosmetix"
+      width={Math.round((size * 170) / 55)}
+      height={size}
+      style={{ height: size, width: "auto" }}
+      className="select-none"
+    />
   );
 }
 
-export function Wordmark({ label, sub }: { label: string; sub?: string }) {
+export function Wordmark({ label, sub }: { label?: string; sub?: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-clinic-700">
-        <LogoMark size={36} />
-      </span>
-      <div className="leading-tight">
-        <div className="text-sm font-semibold tracking-wide text-clinic-800">{label}</div>
-        {sub ? <div className="text-xs text-slate-500">{sub}</div> : null}
-      </div>
+      <LogoMark size={38} />
+      {sub ? (
+        <div className="border-s border-slate-300 ps-3 leading-tight">
+          <div className="text-xs text-slate-500">{sub}</div>
+        </div>
+      ) : null}
     </div>
   );
 }

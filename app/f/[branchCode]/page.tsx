@@ -16,9 +16,7 @@ export default async function PatientFormPage({
   if (!branch || !branch.is_active) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-        <span className="text-clinic-700">
-          <LogoMark size={48} />
-        </span>
+        <LogoMark size={44} />
         <h1 className="text-lg font-semibold text-slate-900">This code is not valid</h1>
         <p className="text-sm text-slate-600">
           The link or QR code seems out of date. Please ask our reception team for help.

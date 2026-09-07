@@ -57,7 +57,7 @@ export default async function QrPage({
               className={[
                 "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
                 b.code === selected.code
-                  ? "bg-clinic-600 text-white"
+                  ? "bg-clinic-600 text-ink"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200",
               ].join(" ")}
             >

@@ -1,20 +1,21 @@
 import { priorityLabel, statusLabel } from "@/lib/i18n";
 
+// Dark ground: a dim tinted surface with bright type, never a light chip.
 const statusStyles: Record<string, string> = {
-  new: "bg-sky-50 text-sky-700 ring-sky-100",
-  assigned: "bg-clinic-50 text-clinic-700 ring-clinic-100",
-  in_progress: "bg-amber-50 text-amber-700 ring-amber-100",
-  escalated: "bg-orange-50 text-orange-700 ring-orange-100",
-  refund_approved: "bg-violet-50 text-violet-700 ring-violet-100",
-  resolved: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-  closed: "bg-slate-100 text-slate-600 ring-slate-200",
+  new: "bg-sky-950/70 text-sky-300 ring-sky-900",
+  assigned: "bg-clinic-50 text-clinic-700 ring-clinic-200",
+  in_progress: "bg-amber-950/70 text-amber-300 ring-amber-900",
+  escalated: "bg-orange-950/70 text-orange-300 ring-orange-900",
+  refund_approved: "bg-violet-950/70 text-violet-300 ring-violet-900",
+  resolved: "bg-emerald-950/70 text-emerald-300 ring-emerald-900",
+  closed: "bg-slate-200 text-slate-500 ring-slate-300",
 };
 
 const priorityStyles: Record<string, string> = {
-  low: "bg-slate-100 text-slate-600 ring-slate-200",
-  normal: "bg-sky-50 text-sky-700 ring-sky-100",
-  high: "bg-amber-50 text-amber-800 ring-amber-200",
-  urgent: "bg-rose-50 text-rose-700 ring-rose-200",
+  low: "bg-slate-200 text-slate-500 ring-slate-300",
+  normal: "bg-sky-950/70 text-sky-300 ring-sky-900",
+  high: "bg-amber-950/70 text-amber-300 ring-amber-900",
+  urgent: "bg-rose-950/70 text-rose-300 ring-rose-900",
 };
 
 export function StatusPill({ status }: { status: string }) {
@@ -43,7 +44,7 @@ export function PriorityPill({ priority }: { priority: string }) {
 
 export function OverduePill() {
   return (
-    <span className="inline-flex rounded-full bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white">
+    <span className="inline-flex rounded-full bg-rose-600 px-2.5 py-1 text-xs font-semibold text-slate-950">
       Overdue
     </span>
   );

@@ -4,7 +4,7 @@ import { Wordmark } from "@/components/Logo";
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 px-6 py-16">
-      <Wordmark label="Lumiere Skin Clinic" sub="Patient Feedback System" />
+      <Wordmark sub="Patient Feedback System" />
       <div className="card p-6">
         <h1 className="text-xl font-semibold text-slate-900">Your experience matters</h1>
         <p className="mt-2 text-sm text-slate-600">

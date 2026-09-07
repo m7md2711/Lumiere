@@ -30,11 +30,8 @@ export default function LoginPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6 py-12">
       <div className="flex flex-col items-center gap-3 text-center">
-        <span className="text-clinic-700">
-          <LogoMark size={52} />
-        </span>
+        <LogoMark size={46} />
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Lumiere Skin Clinic</h1>
           <p className="text-sm text-slate-500">Patient Feedback — staff sign in</p>
         </div>
       </div>
@@ -59,7 +56,7 @@ export default function LoginPage({
         </div>
 
         {searchParams.e ? (
-          <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <p role="alert" className="alert-error">
             Wrong username or password.
           </p>
         ) : null}

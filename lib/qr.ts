@@ -11,6 +11,7 @@ export async function qrDataUrl(url: string): Promise<string> {
     errorCorrectionLevel: "M",
     margin: 1,
     width: 640,
-    color: { dark: "#240d21", light: "#ffffff" },
+    // Dark modules on white: an inverted QR fails on many phone scanners.
+    color: { dark: "#0a0806", light: "#ffffff" },
   });
 }

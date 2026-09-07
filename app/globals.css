@@ -3,34 +3,67 @@
 @tailwind utilities;
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
   body { @apply bg-slate-50 text-slate-800 antialiased; }
-  :focus-visible { @apply outline-none ring-2 ring-clinic-500 ring-offset-2 ring-offset-white; }
+  :focus-visible { @apply outline-none ring-2 ring-clinic-500 ring-offset-2 ring-offset-slate-50; }
   [dir="rtl"] { font-feature-settings: "liga" 1; }
+
+  /* Dark form controls: without these the native widgets stay white. */
+  select option { @apply bg-slate-100 text-slate-800; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8) sepia(1) saturate(3) hue-rotate(5deg); }
+  input[type="checkbox"] { @apply accent-clinic-600; }
+  audio { color-scheme: dark; }
 }
 
 @layer components {
-  .card { @apply rounded-2xl border border-slate-200 bg-white shadow-sm; }
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-slate-100 shadow-gold;
+  }
+
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5
-           text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+           text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .btn-primary { @apply bg-clinic-600 text-white hover:bg-clinic-700 active:bg-clinic-800; }
-  .btn-ghost   { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
-  .btn-lg      { @apply w-full px-5 py-4 text-base; }
+
+  /* Gold is the brightest thing on the page, so its type must be the ground. */
+  .btn-primary {
+    @apply bg-clinic-600 text-ink hover:bg-clinic-700 active:bg-clinic-800;
+  }
+
+  .btn-ghost {
+    @apply border border-slate-300 bg-slate-200 text-slate-800 hover:border-clinic-300 hover:text-clinic-700;
+  }
+
+  .btn-lg { @apply w-full px-5 py-4 text-base; }
+
   .field {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base
-           text-slate-900 placeholder:text-slate-400 focus:border-clinic-500;
+    @apply w-full rounded-xl border border-slate-300 bg-slate-200 px-4 py-3 text-base
+           text-slate-900 placeholder:text-slate-400
+           focus:border-clinic-500 focus:bg-slate-100;
   }
+
   .label { @apply mb-1.5 block text-sm font-medium text-slate-700; }
+
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full bg-clinic-50 px-3 py-1
-           text-xs font-medium text-clinic-700 ring-1 ring-clinic-100;
+           text-xs font-medium text-clinic-700 ring-1 ring-clinic-200;
   }
+
+  /* Status feedback, tuned for a dark ground: tinted surface, bright type. */
+  .alert-error   { @apply rounded-xl bg-rose-950/60 px-4 py-3 text-sm text-rose-300 ring-1 ring-rose-900; }
+  .alert-ok      { @apply rounded-xl bg-emerald-950/60 px-4 py-3 text-sm text-emerald-300 ring-1 ring-emerald-900; }
+  .alert-warn    { @apply text-sm text-amber-300; }
+
   .tabular { font-variant-numeric: tabular-nums; }
+
+  /* The hairline that separates the gold wordmark from the page. */
+  .gold-rule {
+    background-image: linear-gradient(90deg, transparent, #c9a227, #f7e7b0, #c9a227, transparent);
+  }
 }
 
-/* Print: posters only, no chrome. */
+/* Posters print on paper, not on screen: force the ink-light treatment so a
+   clinic printer is not asked to lay down a full black A5 page. */
 @media print {
   .no-print { display: none !important; }
   .poster { page-break-after: always; break-after: page; }
