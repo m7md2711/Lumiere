@@ -20,6 +20,12 @@ export function db(): SupabaseClient {
 
   cached = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      // Next.js patches global fetch and caches it in server components, and
+      // supabase-js goes through fetch — so without this the admin keeps being
+      // served rows that were already deleted. Case data is never cacheable.
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+    },
   });
   return cached;
 }
