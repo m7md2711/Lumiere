@@ -2,12 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { LogoMark } from "@/components/Logo";
-import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
+import { SESSION_COOKIE, isAdminSessionValid, sessionCookieOptions } from "@/lib/auth";
 import NavLinks from "./NavLinks";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Middleware checks the signature; this also rejects sessions issued against
+  // a password that has since been changed.
+  if (!(await isAdminSessionValid())) redirect("/admin/login");
+
   async function signOut() {
     "use server";
     cookies().set(SESSION_COOKIE, "", { ...sessionCookieOptions(), maxAge: 0 });

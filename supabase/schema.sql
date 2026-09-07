@@ -91,6 +91,15 @@ begin
 end;
 $$;
 
+-- Mutable app settings, currently just the admin password hash. No row means
+-- ADMIN_PASS from the environment still applies — deleting the row is the way
+-- back in if the stored password is ever lost.
+create table if not exists app_settings (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz not null default now()
+);
+
 -- ------------------------------------------------------- row level security
 -- Every read and write goes through the Next.js server with the service-role
 -- key, which bypasses RLS. RLS stays ON with no policies so the anon key —
@@ -101,6 +110,7 @@ alter table qr_locations enable row level security;
 alter table cases        enable row level security;
 alter table case_events  enable row level security;
 alter table case_counters enable row level security;
+alter table app_settings  enable row level security;
 
 -- ---------------------------------------------------------------- storage
 

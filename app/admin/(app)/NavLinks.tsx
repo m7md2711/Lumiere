@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconChart, IconList, IconQr, IconBuilding } from "@/components/Icons";
+import { IconChart, IconList, IconQr, IconBuilding, IconGear } from "@/components/Icons";
 
 const items = [
   { href: "/admin/cases", label: "Cases", Icon: IconList },
   { href: "/admin/dashboard", label: "Dashboard", Icon: IconChart },
   { href: "/admin/branches", label: "Branches", Icon: IconBuilding },
   { href: "/admin/qr", label: "QR", Icon: IconQr },
+  { href: "/admin/settings", label: "Settings", Icon: IconGear },
 ];
 
 export default function NavLinks({ variant }: { variant: "sidebar" | "tabs" }) {
@@ -17,7 +18,7 @@ export default function NavLinks({ variant }: { variant: "sidebar" | "tabs" }) {
 
   if (variant === "tabs") {
     return (
-      <div className="grid grid-cols-4 pb-[env(safe-area-inset-bottom)]">
+      <div className="grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
         {items.map((it) => (
           <Link
             key={it.href}

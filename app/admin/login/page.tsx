@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { LogoMark } from "@/components/Logo";
-import {
-  SESSION_COOKIE, checkCredentials, createSessionToken, sessionCookieOptions,
-} from "@/lib/auth";
+import { checkCredentials, currentPasswordVersion, issueSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +15,11 @@ export default function LoginPage({
     const pass = String(formData.get("password") ?? "");
     const next = String(formData.get("next") ?? "/admin/cases");
 
-    if (!checkCredentials(user, pass)) {
+    if (!(await checkCredentials(user, pass))) {
       redirect(`/admin/login?e=1&next=${encodeURIComponent(next)}`);
     }
 
-    const token = await createSessionToken(user);
-    cookies().set(SESSION_COOKIE, token, sessionCookieOptions());
+    await issueSession(await currentPasswordVersion());
     redirect(next.startsWith("/admin") ? next : "/admin/cases");
   }
 

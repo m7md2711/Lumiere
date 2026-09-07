@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
-import { requireAdmin } from "@/lib/auth";
+import { checkCredentials, adminUser, issueSession, requireAdmin, setAdminPassword } from "@/lib/auth";
+import { validateNewPassword } from "@/lib/password";
 import { addEvent, slaHoursFor } from "@/lib/cases";
 import { statusLabel } from "@/lib/i18n";
 import { NOTE_REQUIRED_STATUSES, STATUSES } from "@/lib/types";
@@ -282,5 +283,30 @@ export async function deleteLocation(formData: FormData): Promise<ActionResult> 
 
   revalidatePath("/admin/branches");
   revalidatePath("/admin/qr");
+  return { ok: true };
+}
+
+// ------------------------------------------------------------- credentials
+
+export async function changePassword(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const current = String(formData.get("current_password") ?? "");
+  const next = String(formData.get("new_password") ?? "");
+  const confirm = String(formData.get("confirm_password") ?? "");
+
+  if (!(await checkCredentials(adminUser(), current))) {
+    return { ok: false, error: "That is not the current password." };
+  }
+
+  const problem = validateNewPassword(next, confirm, current);
+  if (problem) return { ok: false, error: problem };
+
+  // Re-issue this session against the new password, or the change would log
+  // the person making it straight out along with everyone else.
+  const pv = await setAdminPassword(next);
+  await issueSession(pv);
+
+  revalidatePath("/admin/settings");
   return { ok: true };
 }
