@@ -29,3 +29,10 @@ Next.js 14 + Supabase, mobile-first for both the patient form and the admin dash
 
 Patients reach the form at `/f/BR01?loc=REC` — no login. Local development:
 `npm install && npm run dev` with the same variables in a `.env.local`.
+
+## Password recovery
+
+The admin password is changed at `/admin/settings` and stored hashed in the
+`app_settings` table, which overrides `ADMIN_PASS`. If it is ever lost, delete the
+`admin_password_hash` row from `app_settings` in the Supabase table editor — the
+`ADMIN_PASS` value from the deployment applies again at once, with no redeploy.
