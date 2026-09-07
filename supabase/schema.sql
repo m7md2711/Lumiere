@@ -127,17 +127,19 @@ create policy "voice notes are publicly readable"
 
 -- ---------------------------------------------------------------- seed data
 
+-- The ten patient-facing branches: six in Abu Dhabi, three in Al Ain, one in
+-- Dubai. Names match the facility list used by the HR and finance systems.
 insert into branches (code, name_en, name_ar) values
-  ('BR01', 'Branch 01', 'الفرع 01'),
-  ('BR02', 'Branch 02', 'الفرع 02'),
-  ('BR03', 'Branch 03', 'الفرع 03'),
-  ('BR04', 'Branch 04', 'الفرع 04'),
-  ('BR05', 'Branch 05', 'الفرع 05'),
-  ('BR06', 'Branch 06', 'الفرع 06'),
-  ('BR07', 'Branch 07', 'الفرع 07'),
-  ('BR08', 'Branch 08', 'الفرع 08'),
-  ('BR09', 'Branch 09', 'الفرع 09'),
-  ('BR10', 'Branch 10', 'الفرع 10')
+  ('BR01', 'Main Branch',   'الفرع الرئيسي'),
+  ('BR02', 'Galleria',      'الغاليريا'),
+  ('BR03', 'Yas Mall',      'ياس مول'),
+  ('BR04', 'Bawabat',       'بوابة الشرق'),
+  ('BR05', 'Deerfields',    'ديرفيلدز'),
+  ('BR06', 'Delma',         'دلما'),
+  ('BR07', 'Al Ain Ladies', 'سيدات العين'),
+  ('BR08', 'Bawadi',        'البوادي'),
+  ('BR09', 'Makani',        'مكاني'),
+  ('BR10', 'Dubai',         'دبي')
 on conflict (code) do nothing;
 
 insert into qr_locations (branch_id, code, label_en, label_ar)
