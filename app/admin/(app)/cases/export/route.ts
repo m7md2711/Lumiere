@@ -1,8 +1,10 @@
 import { casesToCsv, listCases, type CaseFilters } from "@/lib/cases";
 import { requireAdmin } from "@/lib/auth";
+import { buildZip } from "@/lib/archive";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
   await requireAdmin();
@@ -19,10 +21,24 @@ export async function GET(req: Request) {
     overdue: p.get("overdue") ?? undefined,
   };
 
-  const csv = casesToCsv(await listCases(filters, 5000));
+  const rows = await listCases(filters, 5000);
   const stamp = new Date().toISOString().slice(0, 10);
 
-  return new Response(csv, {
+  // format=zip packages the voice notes alongside the CSV, so the export is
+  // self-contained rather than a spreadsheet full of links that stop working
+  // once the recordings are archived away.
+  if (p.get("format") === "zip") {
+    const { buffer } = await buildZip(rows);
+    return new Response(new Uint8Array(buffer), {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="lumiere-cases-${stamp}.zip"`,
+        "Content-Length": String(buffer.length),
+      },
+    });
+  }
+
+  return new Response(casesToCsv(rows), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="lumiere-cases-${stamp}.csv"`,

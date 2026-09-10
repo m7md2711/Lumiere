@@ -44,8 +44,9 @@ export const dict = {
     next: "Next",
     submit: "Send",
     sending: "Sending…",
-    thankYouTitle: "Thank you for speaking with us",
-    thankYouBody: "Your branch team has received this and will be in touch soon.",
+    thankYouTitle: "Thank you",
+    thankYouBody:
+      "Your message has been received by our Customer Experience Team. We will contact you shortly to follow up.",
     yourReference: "Your reference number",
     copy: "Copy",
     copied: "Copied",
@@ -103,8 +104,9 @@ export const dict = {
     next: "التالي",
     submit: "إرسال",
     sending: "جاري الإرسال…",
-    thankYouTitle: "شكراً لتواصلكم معنا",
-    thankYouBody: "وصلت رسالتكم إلى فريق الفرع وسيتم التواصل معكم قريباً.",
+    thankYouTitle: "شكراً لكم",
+    thankYouBody:
+      "تم استلام رسالتكم من قِبل فريق تجربة العملاء، وسيتم التواصل معكم قريباً لمتابعتها.",
     yourReference: "رقمكم المرجعي",
     copy: "نسخ",
     copied: "تم النسخ",

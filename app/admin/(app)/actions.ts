@@ -7,6 +7,11 @@ import { validateNewPassword } from "@/lib/password";
 import { addEvent, slaHoursFor } from "@/lib/cases";
 import { statusLabel } from "@/lib/i18n";
 import { formatLongDateTime } from "@/lib/time";
+import {
+  appendArchiveLog, buildZip, clearPending, deleteCases, getPending,
+  setPending, voiceBytesFor,
+} from "@/lib/archive";
+import { listCases } from "@/lib/cases";
 import { NOTE_REQUIRED_STATUSES, STATUSES } from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
@@ -309,5 +314,103 @@ export async function changePassword(formData: FormData): Promise<ActionResult> 
   await issueSession(pv);
 
   revalidatePath("/admin/settings");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- archiving
+
+/**
+ * A second password, separate from the admin login, because this is the only
+ * action in the system that destroys patient records. It lives in an
+ * environment variable rather than the source: the repository is public, and a
+ * password that deletes data must not be readable by everyone.
+ */
+function masterPasswordOk(supplied: string): boolean {
+  const master = process.env.ARCHIVE_MASTER_PASS ?? "";
+  return master.length > 0 && supplied === master;
+}
+
+export async function prepareArchive(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  if (!masterPasswordOk(String(formData.get("master") ?? ""))) {
+    return { ok: false, error: "That is not the archive password." };
+  }
+
+  const scope = String(formData.get("scope") ?? "closed");
+  const beforeRaw = String(formData.get("before") ?? "").trim();
+
+  let rows = await listCases({}, 5000);
+  if (scope !== "all") {
+    rows = rows.filter((c) => c.status === "closed" || c.status === "resolved");
+  }
+  if (beforeRaw) {
+    const cutoff = new Date(`${beforeRaw}T23:59:59.999+04:00`).getTime();
+    rows = rows.filter((c) => new Date(c.created_at).getTime() <= cutoff);
+  }
+
+  if (rows.length === 0) {
+    return { ok: false, error: "No cases match that selection." };
+  }
+
+  const refs = rows.map((r) => r.ref).sort();
+  await setPending({
+    caseIds: rows.map((r) => r.id),
+    refs,
+    count: rows.length,
+    voiceCount: rows.filter((r) => r.voice_url).length,
+    voiceBytes: await voiceBytesFor(rows),
+    scope: scope === "all" ? "All cases" : "Closed and resolved",
+    preparedAt: new Date().toISOString(),
+    downloadedAt: null,
+  });
+
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
+
+export async function cancelArchive(): Promise<ActionResult> {
+  await requireAdmin();
+  await clearPending();
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
+
+/**
+ * Deletes exactly the ids written into the ZIP. Cases created after the batch
+ * was prepared are untouched, so nothing disappears unarchived.
+ */
+export async function confirmArchiveDelete(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  if (!masterPasswordOk(String(formData.get("master") ?? ""))) {
+    return { ok: false, error: "That is not the archive password." };
+  }
+  if (String(formData.get("confirm") ?? "").trim().toUpperCase() !== "DELETE") {
+    return { ok: false, error: 'Type DELETE to confirm.' };
+  }
+
+  const pending = await getPending();
+  if (!pending) return { ok: false, error: "Nothing is prepared for archiving." };
+  if (!pending.downloadedAt) {
+    return { ok: false, error: "Download the archive first — nothing is deleted until you hold the file." };
+  }
+
+  await deleteCases(pending.caseIds);
+  await appendArchiveLog({
+    at: new Date().toISOString(),
+    caseCount: pending.count,
+    voiceCount: pending.voiceCount,
+    bytesFreed: pending.voiceBytes,
+    refFirst: pending.refs[0] ?? "",
+    refLast: pending.refs[pending.refs.length - 1] ?? "",
+    scope: pending.scope,
+    note: `${pending.count} cases and ${pending.voiceCount} voice notes exported and removed.`,
+  });
+  await clearPending();
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/cases");
+  revalidatePath("/admin/dashboard");
   return { ok: true };
 }

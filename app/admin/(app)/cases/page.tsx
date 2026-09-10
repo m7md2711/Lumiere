@@ -37,9 +37,18 @@ export default async function CasesPage({
             {overdueCount ? ` · ${overdueCount} overdue` : ""}
           </p>
         </div>
-        <a href={`/admin/cases/export?${qs}`} className="btn btn-ghost">
-          Export CSV
-        </a>
+        <div className="flex gap-2">
+          <a href={`/admin/cases/export?${qs}`} className="btn btn-ghost">
+            CSV
+          </a>
+          <a
+            href={`/admin/cases/export?${qs}${qs ? "&" : ""}format=zip`}
+            className="btn btn-primary"
+            title="CSV plus every voice note, as a zip file"
+          >
+            CSV + audio
+          </a>
+        </div>
       </div>
 
       <Filters

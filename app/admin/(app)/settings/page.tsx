@@ -1,16 +1,20 @@
 import { adminUser } from "@/lib/auth";
 import { formatLongDateTime } from "@/lib/time";
 import { db } from "@/lib/supabase";
+import { archiveLog, getPending, storageStats } from "@/lib/archive";
 import ChangePasswordForm from "./ChangePasswordForm";
+import { StorageMeter } from "./StorageMeter";
+import ArchivePanel from "./ArchivePanel";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const { data } = await db()
-    .from("app_settings")
-    .select("updated_at")
-    .eq("key", "admin_password_hash")
-    .maybeSingle();
+  const [{ data }, stats, pending, log] = await Promise.all([
+    db().from("app_settings").select("updated_at").eq("key", "admin_password_hash").maybeSingle(),
+    storageStats(),
+    getPending(),
+    archiveLog(),
+  ]);
 
   const changedAt = (data as { updated_at: string } | null)?.updated_at ?? null;
 
@@ -38,6 +42,10 @@ export default async function SettingsPage() {
       </section>
 
       <ChangePasswordForm />
+
+      <StorageMeter stats={stats} />
+
+      <ArchivePanel pending={pending} log={log} />
     </div>
   );
 }
