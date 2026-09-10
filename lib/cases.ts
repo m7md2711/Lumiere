@@ -1,5 +1,6 @@
 import { db, VOICE_BUCKET } from "./supabase";
 import { categoryLabel } from "./i18n";
+import { clinicDateEnd, clinicDateStart, formatForCsv } from "./time";
 import type {
   Branch, Case, CaseEvent, CaseWithBranch, Category, ContactMethod,
   EventType, Lang, PreferredTime, Priority, QrLocation, Status,
@@ -81,12 +82,9 @@ export async function listCases(f: CaseFilters, limit = 300): Promise<CaseWithBr
   if (f.status) q = q.eq("status", f.status);
   if (f.category) q = q.eq("category", f.category);
   if (f.priority) q = q.eq("priority", f.priority);
-  if (f.from) q = q.gte("created_at", new Date(f.from).toISOString());
-  if (f.to) {
-    const to = new Date(f.to);
-    to.setHours(23, 59, 59, 999);
-    q = q.lte("created_at", to.toISOString());
-  }
+  // Date filters mean the clinic's day, not the server's UTC one.
+  if (f.from) q = q.gte("created_at", clinicDateStart(f.from).toISOString());
+  if (f.to) q = q.lte("created_at", clinicDateEnd(f.to).toISOString());
   if (f.q) {
     const s = f.q.replace(/[%,()]/g, " ").trim();
     if (s) q = q.or(`ref.ilike.%${s}%,patient_name.ilike.%${s}%,mobile.ilike.%${s}%`);
@@ -278,10 +276,10 @@ async function notifyNewCase(p: NotifyPayload): Promise<void> {
 
 export function casesToCsv(rows: CaseWithBranch[]): string {
   const head = [
-    "Reference", "Created", "Branch", "Location", "Category", "Priority", "Status",
-    "Assigned to", "SLA due", "Overdue", "Patient", "Mobile", "Language", "Contact method",
+    "Reference", "Created (GST)", "Branch", "Location", "Category", "Priority", "Status",
+    "Assigned to", "SLA due (GST)", "Overdue", "Patient", "Mobile", "Language", "Contact method",
     "Preferred time", "Description", "Voice note", "Resolution note", "Closure reason",
-    "Refund amount", "Refund status", "Satisfaction", "Closed at",
+    "Refund amount", "Refund status", "Satisfaction", "Closed at (GST)",
   ];
   const now = Date.now();
 
@@ -292,13 +290,13 @@ export function casesToCsv(rows: CaseWithBranch[]): string {
 
   const lines = rows.map((c) =>
     [
-      c.ref, c.created_at, c.branches?.name_en ?? "", c.qr_locations?.label_en ?? "",
-      c.category, c.priority, c.status, c.assigned_to ?? "", c.sla_due_at,
+      c.ref, formatForCsv(c.created_at), c.branches?.name_en ?? "", c.qr_locations?.label_en ?? "",
+      c.category, c.priority, c.status, c.assigned_to ?? "", formatForCsv(c.sla_due_at),
       !["resolved", "closed"].includes(c.status) && new Date(c.sla_due_at).getTime() < now
         ? "YES" : "",
       c.patient_name, c.mobile, c.preferred_lang, c.contact_method, c.preferred_time,
       c.description ?? "", c.voice_url ?? "", c.resolution_note ?? "", c.closure_reason ?? "",
-      c.refund_amount ?? "", c.refund_status ?? "", c.satisfaction ?? "", c.closed_at ?? "",
+      c.refund_amount ?? "", c.refund_status ?? "", c.satisfaction ?? "", formatForCsv(c.closed_at),
     ].map(esc).join(",")
   );
 

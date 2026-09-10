@@ -6,6 +6,7 @@ import { checkCredentials, adminUser, issueSession, requireAdmin, setAdminPasswo
 import { validateNewPassword } from "@/lib/password";
 import { addEvent, slaHoursFor } from "@/lib/cases";
 import { statusLabel } from "@/lib/i18n";
+import { formatLongDateTime } from "@/lib/time";
 import { NOTE_REQUIRED_STATUSES, STATUSES } from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
@@ -70,7 +71,7 @@ export async function changePriority(formData: FormData): Promise<ActionResult> 
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
-  await addEvent(id, "status", `Priority set to ${priority}. SLA due ${due.toLocaleString("en-GB")}.`);
+  await addEvent(id, "status", `Priority set to ${priority}. SLA due ${formatLongDateTime(due)}.`);
   refresh(id);
   return { ok: true };
 }

@@ -1,4 +1,5 @@
 import { adminUser } from "@/lib/auth";
+import { formatLongDateTime } from "@/lib/time";
 import { db } from "@/lib/supabase";
 import ChangePasswordForm from "./ChangePasswordForm";
 
@@ -30,12 +31,7 @@ export default async function SettingsPage() {
           <div>
             <dt className="text-xs text-slate-400">Password last changed</dt>
             <dd className="mt-0.5 font-medium text-slate-800">
-              {changedAt
-                ? new Date(changedAt).toLocaleString("en-GB", {
-                    day: "2-digit", month: "short", year: "numeric",
-                    hour: "2-digit", minute: "2-digit",
-                  })
-                : "Never — still the deployment password"}
+              {changedAt ? formatLongDateTime(changedAt) : "Never — still the deployment password"}
             </dd>
           </div>
         </dl>

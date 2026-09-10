@@ -1,4 +1,5 @@
 import { priorityLabel, statusLabel } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/time";
 
 // Dark ground: a dim tinted surface with bright type, never a light chip.
 const statusStyles: Record<string, string> = {
@@ -51,7 +52,5 @@ export function OverduePill() {
 }
 
 export function shortDate(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-  });
+  return formatDateTime(iso);
 }

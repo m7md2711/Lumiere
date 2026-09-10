@@ -2,6 +2,7 @@ import { db } from "@/lib/supabase";
 import { getBranches } from "@/lib/cases";
 import { categoryLabel } from "@/lib/i18n";
 import { CATEGORIES } from "@/lib/types";
+import { clinicDayStart, clinicMonthStart, formatDayLabel } from "@/lib/time";
 import type { Case } from "@/lib/types";
 import Charts from "./Charts";
 
@@ -34,9 +35,7 @@ export default async function DashboardPage() {
     (r) => !terminal(r.status) && new Date(r.sla_due_at).getTime() < now
   ).length;
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  const monthStart = clinicMonthStart();
   const resolvedThisMonth = rows.filter(
     (r) => terminal(r.status) && new Date(r.closed_at ?? r.created_at) >= monthStart
   ).length;
@@ -92,12 +91,10 @@ export default async function DashboardPage() {
 
   const trend: { name: string; cases: number }[] = [];
   for (let i = 29; i >= 0; i--) {
-    const day = new Date();
-    day.setHours(0, 0, 0, 0);
-    day.setDate(day.getDate() - i);
+    const day = clinicDayStart(new Date(Date.now() - i * 86_400_000));
     const next = new Date(day.getTime() + 86_400_000);
     trend.push({
-      name: day.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+      name: formatDayLabel(day),
       cases: rows.filter((r) => {
         const t = new Date(r.created_at);
         return t >= day && t < next;
