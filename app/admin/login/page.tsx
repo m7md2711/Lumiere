@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { LogoMark } from "@/components/Logo";
-import { checkCredentials, currentPasswordVersion, issueSession } from "@/lib/auth";
+import { authenticate, issueSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +15,12 @@ export default function LoginPage({
     const pass = String(formData.get("password") ?? "");
     const next = String(formData.get("next") ?? "/admin/cases");
 
-    if (!(await checkCredentials(user, pass))) {
+    const identity = await authenticate(user, pass);
+    if (!identity) {
       redirect(`/admin/login?e=1&next=${encodeURIComponent(next)}`);
     }
 
-    await issueSession(await currentPasswordVersion());
+    await issueSession(identity);
     redirect(next.startsWith("/admin") ? next : "/admin/cases");
   }
 

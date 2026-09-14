@@ -1,19 +1,30 @@
+import { isAdminSession } from "@/lib/scope";
+import { redirect } from "next/navigation";
 import { adminUser } from "@/lib/auth";
 import { formatLongDateTime } from "@/lib/time";
 import { db } from "@/lib/supabase";
 import { archiveLog, getPending, storageStats } from "@/lib/archive";
+import { listBranchUsers } from "@/lib/users";
 import ChangePasswordForm from "./ChangePasswordForm";
+import BranchLogins from "./BranchLogins";
 import { StorageMeter } from "./StorageMeter";
 import ArchivePanel from "./ArchivePanel";
 
 export const dynamic = "force-dynamic";
 
+// Branch staff have no business here; the nav hides it, this enforces it.
+async function requireAdminPage() {
+  if (!(await isAdminSession())) redirect("/admin/cases");
+}
+
 export default async function SettingsPage() {
-  const [{ data }, stats, pending, log] = await Promise.all([
+  await requireAdminPage();
+  const [{ data }, stats, pending, log, branchUsers] = await Promise.all([
     db().from("app_settings").select("updated_at").eq("key", "admin_password_hash").maybeSingle(),
     storageStats(),
     getPending(),
     archiveLog(),
+    listBranchUsers(),
   ]);
 
   const changedAt = (data as { updated_at: string } | null)?.updated_at ?? null;
@@ -42,6 +53,13 @@ export default async function SettingsPage() {
       </section>
 
       <ChangePasswordForm />
+
+      <BranchLogins
+        existing={branchUsers.map((u) => ({
+          branchCode: u.branchCode, branchName: u.branchName,
+          username: u.username, updatedAt: u.updatedAt,
+        }))}
+      />
 
       <StorageMeter stats={stats} />
 

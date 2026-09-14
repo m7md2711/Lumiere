@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getBranches, listCases, type CaseFilters } from "@/lib/cases";
+import { getBranches, type CaseFilters } from "@/lib/cases";
+import { listCasesScoped, isAdminSession } from "@/lib/scope";
 import { categoryLabel, priorityLabel, statusLabel } from "@/lib/i18n";
 import { CATEGORIES, PRIORITIES, STATUSES, isOverdue } from "@/lib/types";
 import { OverduePill, PriorityPill, StatusPill, shortDate } from "@/components/Pills";
@@ -20,7 +21,11 @@ export default async function CasesPage({
     q: searchParams.q, overdue: searchParams.overdue,
   };
 
-  const [branches, cases] = await Promise.all([getBranches(), listCases(filters)]);
+  const [branches, cases, admin] = await Promise.all([
+    getBranches(),
+    listCasesScoped(filters),
+    isAdminSession(),
+  ]);
   const qs = new URLSearchParams(
     Object.entries(filters).filter(([, v]) => v) as [string, string][]
   ).toString();
@@ -52,7 +57,7 @@ export default async function CasesPage({
       </div>
 
       <Filters
-        branches={branches.map((b) => ({ id: b.id, name: b.name_en, code: b.code }))}
+        branches={admin ? branches.map((b) => ({ id: b.id, name: b.name_en, code: b.code })) : []}
         statuses={STATUSES.map((s) => ({ v: s, label: statusLabel(s) }))}
         categories={CATEGORIES.map((c) => ({ v: c, label: categoryLabel(c, "en") }))}
         priorities={PRIORITIES.map((p) => ({ v: p, label: priorityLabel(p) }))}

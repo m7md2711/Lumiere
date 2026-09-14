@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCase, getEvents, toWhatsApp } from "@/lib/cases";
+import { getEvents, toWhatsApp } from "@/lib/cases";
+import { getCaseScoped } from "@/lib/scope";
 import { categoryLabel } from "@/lib/i18n";
 import { isOverdue } from "@/lib/types";
 import { OverduePill, PriorityPill, StatusPill, shortDate } from "@/components/Pills";
@@ -9,7 +10,7 @@ import CaseActions from "./CaseActions";
 export const dynamic = "force-dynamic";
 
 export default async function CaseDetail({ params }: { params: { id: string } }) {
-  const c = await getCase(params.id);
+  const c = await getCaseScoped(params.id);
   if (!c) notFound();
 
   const events = await getEvents(c.id);

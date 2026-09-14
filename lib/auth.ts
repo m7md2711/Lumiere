@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { db } from "./supabase";
 import { hashPassword, passwordVersion, verifyPassword } from "./password";
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, sessionCookieOptions } from "./session";
+import { branchUserVersion, findBranchUser, verifyBranchUser, type BranchUser } from "./users";
 
 export { SESSION_COOKIE, sessionCookieOptions };
 
@@ -50,14 +51,46 @@ export async function currentPasswordVersion(): Promise<string> {
   return passwordVersion(await currentSecretMaterial());
 }
 
-export async function checkCredentials(user: string, pass: string): Promise<boolean> {
-  if (user !== adminUser()) return false;
-
+async function adminPasswordOk(pass: string): Promise<boolean> {
   const hash = await storedHash();
   if (hash) return verifyPassword(pass, hash);
-
   const env = envPassword();
   return env.length > 0 && pass === env;
+}
+
+/** Kept for the change-password form, which only ever checks the admin. */
+export async function checkCredentials(user: string, pass: string): Promise<boolean> {
+  return user === adminUser() && (await adminPasswordOk(pass));
+}
+
+export type Identity =
+  | { role: "admin"; username: string; pv: string }
+  | {
+      role: "branch"; username: string; pv: string;
+      branchId: string; branchCode: string; branchName: string;
+    };
+
+/** Admin first, then the per-branch logins. */
+export async function authenticate(user: string, pass: string): Promise<Identity | null> {
+  const supplied = user.trim();
+
+  if (supplied === adminUser() && (await adminPasswordOk(pass))) {
+    return { role: "admin", username: adminUser(), pv: await currentPasswordVersion() };
+  }
+
+  const branchUser: BranchUser | null = await verifyBranchUser(supplied, pass);
+  if (branchUser) {
+    return {
+      role: "branch",
+      username: branchUser.username,
+      pv: branchUserVersion(branchUser),
+      branchId: branchUser.branchId,
+      branchCode: branchUser.branchCode,
+      branchName: branchUser.branchName,
+    };
+  }
+
+  return null;
 }
 
 /** Writes the new password and returns the fingerprint the session must carry. */
@@ -72,8 +105,13 @@ export async function setAdminPassword(plain: string): Promise<string> {
 
 // ------------------------------------------------------------------- session
 
-export async function createSessionToken(user: string, pv: string): Promise<string> {
-  return new SignJWT({ u: user, pv })
+export async function createSessionToken(identity: Identity): Promise<string> {
+  const { role, username, pv } = identity;
+  const branch =
+    identity.role === "branch"
+      ? { b: identity.branchId, bc: identity.branchCode, bn: identity.branchName }
+      : {};
+  return new SignJWT({ u: username, r: role, pv, ...branch })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
@@ -90,38 +128,77 @@ export async function verifySessionToken(token: string | undefined): Promise<boo
   }
 }
 
-/** Issue the cookie for an already-authenticated admin. */
-export async function issueSession(pv: string): Promise<void> {
-  cookies().set(SESSION_COOKIE, await createSessionToken(adminUser(), pv), sessionCookieOptions());
+/** Issue the cookie for an already-authenticated identity. */
+export async function issueSession(identity: Identity): Promise<void> {
+  cookies().set(SESSION_COOKIE, await createSessionToken(identity), sessionCookieOptions());
 }
+
+/** Re-issue the admin cookie after a password change. */
+export async function reissueAdminSession(pv: string): Promise<void> {
+  await issueSession({ role: "admin", username: adminUser(), pv });
+}
+
+export type Session =
+  | { role: "admin"; username: string }
+  | { role: "branch"; username: string; branchId: string; branchCode: string; branchName: string };
 
 /**
- * Server-side guard. Beyond the signature it checks the token was issued for
- * the password currently in force, so a password change logs out every other
- * device instead of only changing what the login form accepts.
+ * Reads and validates the session. Beyond the signature it checks the token was
+ * issued against the password currently in force for that identity, so changing
+ * a password signs out every device holding the old one.
  */
-export async function requireAdmin(): Promise<void> {
+export async function currentSession(): Promise<Session | null> {
   const token = cookies().get(SESSION_COOKIE)?.value;
-  if (!token) throw new Error("Not authenticated.");
+  if (!token) return null;
 
-  let claims: { pv?: unknown };
+  let claims: Record<string, unknown>;
   try {
-    claims = (await jwtVerify(token, secret())).payload as { pv?: unknown };
+    claims = (await jwtVerify(token, secret())).payload as Record<string, unknown>;
   } catch {
-    throw new Error("Not authenticated.");
+    return null;
   }
 
-  if (claims.pv !== (await currentPasswordVersion())) {
-    throw new Error("Session expired — the password was changed.");
+  const role = claims.r === "branch" ? "branch" : "admin";
+  const username = String(claims.u ?? "");
+
+  if (role === "admin") {
+    if (claims.pv !== (await currentPasswordVersion())) return null;
+    return { role: "admin", username };
   }
+
+  const branchCode = String(claims.bc ?? "");
+  const user = await findBranchUser(branchCode);
+  if (!user || claims.pv !== branchUserVersion(user)) return null;
+
+  return {
+    role: "branch",
+    username,
+    branchId: user.branchId,
+    branchCode: user.branchCode,
+    branchName: user.branchName,
+  };
 }
 
-/** Same check, as a boolean, for layouts that redirect rather than throw. */
-export async function isAdminSessionValid(): Promise<boolean> {
-  try {
-    await requireAdmin();
-    return true;
-  } catch {
-    return false;
-  }
+/** Any signed-in user. Throws rather than returning null, for server actions. */
+export async function requireSession(): Promise<Session> {
+  const s = await currentSession();
+  if (!s) throw new Error("Not authenticated.");
+  return s;
+}
+
+/** Admin only — branch staff must not reach settings, branches or archiving. */
+export async function requireAdmin(): Promise<void> {
+  const s = await currentSession();
+  if (!s) throw new Error("Not authenticated.");
+  if (s.role !== "admin") throw new Error("This action is for the administrator only.");
+}
+
+/** The branch a session is confined to, or null when it sees everything. */
+export async function sessionBranchId(): Promise<string | null> {
+  const s = await currentSession();
+  return s && s.role === "branch" ? s.branchId : null;
+}
+
+export async function isSessionValid(): Promise<boolean> {
+  return (await currentSession()) !== null;
 }

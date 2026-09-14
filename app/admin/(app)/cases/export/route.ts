@@ -1,5 +1,6 @@
-import { casesToCsv, listCases, type CaseFilters } from "@/lib/cases";
-import { requireAdmin } from "@/lib/auth";
+import { casesToCsv, type CaseFilters } from "@/lib/cases";
+import { requireSession } from "@/lib/auth";
+import { listCasesScoped } from "@/lib/scope";
 import { buildZip } from "@/lib/archive";
 
 export const runtime = "nodejs";
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
-  await requireAdmin();
+  await requireSession();
 
   const p = new URL(req.url).searchParams;
   const filters: CaseFilters = {
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
     overdue: p.get("overdue") ?? undefined,
   };
 
-  const rows = await listCases(filters, 5000);
+  const rows = await listCasesScoped(filters, 5000);
   const stamp = new Date().toISOString().slice(0, 10);
 
   // format=zip packages the voice notes alongside the CSV, so the export is

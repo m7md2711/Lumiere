@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { LogoMark } from "@/components/Logo";
-import { SESSION_COOKIE, isAdminSessionValid, sessionCookieOptions } from "@/lib/auth";
+import { SESSION_COOKIE, currentSession, sessionCookieOptions } from "@/lib/auth";
 import NavLinks from "./NavLinks";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Middleware checks the signature; this also rejects sessions issued against
   // a password that has since been changed.
-  if (!(await isAdminSessionValid())) redirect("/admin/login");
+  const session = await currentSession();
+  if (!session) redirect("/admin/login");
+
+  const isAdmin = session.role === "admin";
+  const label = isAdmin ? "Feedback" : session.branchName;
 
   async function signOut() {
     "use server";
@@ -25,9 +29,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="sticky top-0 flex h-screen flex-col p-4">
           <Link href="/admin/cases" className="mb-6 flex items-center gap-2.5 px-2 pt-2">
             <LogoMark size={26} />
-            <span className="border-s border-slate-300 ps-2.5 text-xs font-medium text-slate-500">Feedback</span>
+            <span className="border-s border-slate-300 ps-2.5 text-xs font-medium text-slate-500">{label}</span>
           </Link>
-          <NavLinks variant="sidebar" />
+          <NavLinks variant="sidebar" isAdmin={isAdmin} />
           <form action={signOut} className="mt-auto">
             <button className="w-full rounded-xl px-3 py-2.5 text-start text-sm font-medium text-slate-500 hover:bg-slate-50">
               Sign out
@@ -41,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <header className="no-print sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-slate-100 px-4 py-3 lg:hidden">
           <Link href="/admin/cases" className="flex items-center gap-2">
             <LogoMark size={22} />
-            <span className="border-s border-slate-300 ps-2.5 text-xs font-medium text-slate-500">Feedback</span>
+            <span className="border-s border-slate-300 ps-2.5 text-xs font-medium text-slate-500">{label}</span>
           </Link>
           <form action={signOut}>
             <button className="text-sm font-medium text-slate-500">Sign out</button>
@@ -53,7 +57,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       {/* Mobile bottom tabs */}
       <nav className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-slate-100 lg:hidden">
-        <NavLinks variant="tabs" />
+        <NavLinks variant="tabs" isAdmin={isAdmin} />
       </nav>
     </div>
   );

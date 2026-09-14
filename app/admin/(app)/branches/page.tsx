@@ -1,9 +1,17 @@
+import { isAdminSession } from "@/lib/scope";
+import { redirect } from "next/navigation";
 import { getBranches, getLocations } from "@/lib/cases";
 import BranchCard from "./BranchCard";
 
 export const dynamic = "force-dynamic";
 
+// Branch staff have no business here; the nav hides it, this enforces it.
+async function requireAdminPage() {
+  if (!(await isAdminSession())) redirect("/admin/cases");
+}
+
 export default async function BranchesPage() {
+  await requireAdminPage();
   const [branches, locations] = await Promise.all([getBranches(), getLocations()]);
 
   return (

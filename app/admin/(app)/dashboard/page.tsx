@@ -3,6 +3,7 @@ import { getBranches } from "@/lib/cases";
 import { categoryLabel } from "@/lib/i18n";
 import { CATEGORIES } from "@/lib/types";
 import { clinicDayStart, clinicMonthStart, formatDayLabel } from "@/lib/time";
+import { sessionBranchId } from "@/lib/auth";
 import type { Case } from "@/lib/types";
 import Charts from "./Charts";
 
@@ -15,16 +16,22 @@ type Row = Pick<
 >;
 
 export default async function DashboardPage() {
-  const [branches, { data }] = await Promise.all([
-    getBranches(),
-    db()
-      .from("cases")
-      .select(
-        "id, branch_id, category, status, priority, sla_due_at, created_at, closed_at, refund_amount, refund_status, satisfaction"
-      )
-      .order("created_at", { ascending: false })
-      .limit(5000),
-  ]);
+  const scopeBranchId = await sessionBranchId();
+
+  let query = db()
+    .from("cases")
+    .select(
+      "id, branch_id, category, status, priority, sla_due_at, created_at, closed_at, refund_amount, refund_status, satisfaction"
+    )
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  if (scopeBranchId) query = query.eq("branch_id", scopeBranchId);
+
+  const [allBranches, { data }] = await Promise.all([getBranches(), query]);
+  // A branch session charts only itself, so the per-branch bars stay meaningful.
+  const branches = scopeBranchId
+    ? allBranches.filter((b) => b.id === scopeBranchId)
+    : allBranches;
 
   const rows = (data ?? []) as Row[];
   const now = Date.now();

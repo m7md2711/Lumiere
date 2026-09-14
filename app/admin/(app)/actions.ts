@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/supabase";
-import { checkCredentials, adminUser, issueSession, requireAdmin, setAdminPassword } from "@/lib/auth";
+import {
+  checkCredentials, adminUser, reissueAdminSession, requireAdmin,
+  requireSession, setAdminPassword,
+} from "@/lib/auth";
+import { assertCaseInScope } from "@/lib/scope";
 import { validateNewPassword } from "@/lib/password";
 import { addEvent, slaHoursFor } from "@/lib/cases";
 import { statusLabel } from "@/lib/i18n";
@@ -12,6 +16,7 @@ import {
   setPending, voiceBytesFor,
 } from "@/lib/archive";
 import { listCases } from "@/lib/cases";
+import { generateBranchLogins, type GeneratedLogin } from "@/lib/users";
 import { NOTE_REQUIRED_STATUSES, STATUSES } from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
@@ -26,9 +31,10 @@ function refresh(id: string) {
 // ---------------------------------------------------------------- cases
 
 export async function changeStatus(formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSession();
 
   const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
   const status = String(formData.get("status") ?? "") as Status;
   const note = String(formData.get("note") ?? "").trim();
 
@@ -56,9 +62,10 @@ export async function changeStatus(formData: FormData): Promise<ActionResult> {
 }
 
 export async function changePriority(formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSession();
 
   const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
   const priority = String(formData.get("priority") ?? "") as Priority;
   if (!id || !["low", "normal", "high", "urgent"].includes(priority)) {
     return { ok: false, error: "Unknown priority." };
@@ -82,9 +89,10 @@ export async function changePriority(formData: FormData): Promise<ActionResult> 
 }
 
 export async function addNote(formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSession();
 
   const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
   const note = String(formData.get("note") ?? "").trim();
   if (!id || !note) return { ok: false, error: "Write a note first." };
 
@@ -94,9 +102,10 @@ export async function addNote(formData: FormData): Promise<ActionResult> {
 }
 
 export async function logContact(formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSession();
 
   const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
   const method = String(formData.get("method") ?? "call");
   const outcome = String(formData.get("outcome") ?? "").trim();
   if (!id || !outcome) return { ok: false, error: "Describe the outcome of the contact." };
@@ -113,9 +122,10 @@ export async function logContact(formData: FormData): Promise<ActionResult> {
 }
 
 export async function escalate(formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSession();
 
   const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
   const reason = String(formData.get("reason") ?? "").trim();
   if (!id || !reason) return { ok: false, error: "Escalation needs a reason." };
 
@@ -128,9 +138,10 @@ export async function escalate(formData: FormData): Promise<ActionResult> {
 }
 
 export async function approveRefund(formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSession();
 
   const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
   const amount = Number(formData.get("amount"));
   const reason = String(formData.get("reason") ?? "").trim();
 
@@ -154,9 +165,10 @@ export async function approveRefund(formData: FormData): Promise<ActionResult> {
 }
 
 export async function markRefundProcessed(formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSession();
 
   const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
   if (!id) return { ok: false, error: "Missing case." };
 
   const { error } = await db().from("cases").update({ refund_status: "processed" }).eq("id", id);
@@ -168,9 +180,10 @@ export async function markRefundProcessed(formData: FormData): Promise<ActionRes
 }
 
 export async function closeCase(formData: FormData): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSession();
 
   const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
   const note = String(formData.get("resolution_note") ?? "").trim();
   const reason = String(formData.get("closure_reason") ?? "").trim();
   const satisfaction = Number(formData.get("satisfaction"));
@@ -311,7 +324,7 @@ export async function changePassword(formData: FormData): Promise<ActionResult> 
   // Re-issue this session against the new password, or the change would log
   // the person making it straight out along with everyone else.
   const pv = await setAdminPassword(next);
-  await issueSession(pv);
+  await reissueAdminSession(pv);
 
   revalidatePath("/admin/settings");
   return { ok: true };
@@ -413,4 +426,33 @@ export async function confirmArchiveDelete(formData: FormData): Promise<ActionRe
   revalidatePath("/admin/cases");
   revalidatePath("/admin/dashboard");
   return { ok: true };
+}
+
+// ------------------------------------------------------------ branch logins
+
+export type LoginsResult =
+  | { ok: true; logins: GeneratedLogin[] }
+  | { ok: false; error: string };
+
+/**
+ * Creates logins for branches that have none, or resets them all. The plaintext
+ * passwords come back once, for the admin to hand out — only hashes are stored,
+ * so there is no way to read them again afterwards.
+ */
+export async function createBranchLogins(formData: FormData): Promise<LoginsResult> {
+  await requireAdmin();
+
+  const reset = formData.get("reset") === "on";
+  const only = String(formData.get("only") ?? "").trim() || undefined;
+
+  try {
+    const logins = await generateBranchLogins({ only, reset });
+    if (logins.length === 0) {
+      return { ok: false, error: "Every branch already has a login. Tick reset to reissue them." };
+    }
+    revalidatePath("/admin/settings");
+    return { ok: true, logins };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create logins." };
+  }
 }

@@ -12,14 +12,26 @@ const items = [
   { href: "/admin/settings", label: "Settings", Icon: IconGear },
 ];
 
-export default function NavLinks({ variant }: { variant: "sidebar" | "tabs" }) {
+export default function NavLinks({
+  variant, isAdmin,
+}: {
+  variant: "sidebar" | "tabs";
+  isAdmin: boolean;
+}) {
   const path = usePathname();
   const isActive = (href: string) => path === href || path.startsWith(href + "/");
+  // Branch staff get their cases and their numbers; the rest is clinic-wide.
+  const visible = isAdmin
+    ? items
+    : items.filter((i) => i.href === "/admin/cases" || i.href === "/admin/dashboard");
 
   if (variant === "tabs") {
     return (
-      <div className="grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
-        {items.map((it) => (
+      <div
+        className="grid pb-[env(safe-area-inset-bottom)]"
+        style={{ gridTemplateColumns: `repeat(${visible.length}, minmax(0,1fr))` }}
+      >
+        {visible.map((it) => (
           <Link
             key={it.href}
             href={it.href}
@@ -38,7 +50,7 @@ export default function NavLinks({ variant }: { variant: "sidebar" | "tabs" }) {
 
   return (
     <div className="space-y-1">
-      {items.map((it) => (
+      {visible.map((it) => (
         <Link
           key={it.href}
           href={it.href}

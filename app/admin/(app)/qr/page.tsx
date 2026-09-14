@@ -1,3 +1,5 @@
+import { isAdminSession } from "@/lib/scope";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getBranches, getLocations } from "@/lib/cases";
 import { formUrl, qrDataUrl } from "@/lib/qr";
@@ -5,11 +7,17 @@ import QrGrid from "./QrGrid";
 
 export const dynamic = "force-dynamic";
 
+// Branch staff have no business here; the nav hides it, this enforces it.
+async function requireAdminPage() {
+  if (!(await isAdminSession())) redirect("/admin/cases");
+}
+
 export default async function QrPage({
   searchParams,
 }: {
   searchParams: { branch?: string };
 }) {
+  await requireAdminPage();
   const branches = await getBranches();
   const selected =
     branches.find((b) => b.code === searchParams.branch) ?? branches[0] ?? null;
