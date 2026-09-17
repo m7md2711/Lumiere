@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { LogoMark } from "@/components/Logo";
 import { authenticate, issueSession } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,17 @@ export default function LoginPage({
 
     const identity = await authenticate(user, pass);
     if (!identity) {
+      // Repeated failures against one branch login is how a circulating
+      // password shows up, so the attempt is worth recording.
+      await audit("signin_failed", user || "(blank)", { detail: "Wrong username or password" });
       redirect(`/admin/login?e=1&next=${encodeURIComponent(next)}`);
     }
 
     await issueSession(identity);
+    await audit("signin", identity.username, {
+      branch: identity.role === "branch" ? identity.branchName : null,
+      detail: identity.role === "admin" ? "Administrator" : "Branch staff",
+    });
     redirect(next.startsWith("/admin") ? next : "/admin/cases");
   }
 

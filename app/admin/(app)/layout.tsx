@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { LogoMark } from "@/components/Logo";
 import { SESSION_COOKIE, currentSession, sessionCookieOptions } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import NavLinks from "./NavLinks";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   async function signOut() {
     "use server";
+    const s = await currentSession();
+    if (s) {
+      await audit("signout", s.username, {
+        branch: s.role === "branch" ? s.branchName : null,
+      });
+    }
     cookies().set(SESSION_COOKIE, "", { ...sessionCookieOptions(), maxAge: 0 });
     redirect("/admin/login");
   }

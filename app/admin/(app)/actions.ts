@@ -17,6 +17,7 @@ import {
 } from "@/lib/archive";
 import { listCases } from "@/lib/cases";
 import { generateBranchLogins, type GeneratedLogin } from "@/lib/users";
+import { audit } from "@/lib/audit";
 import { NOTE_REQUIRED_STATUSES, STATUSES } from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
@@ -325,6 +326,7 @@ export async function changePassword(formData: FormData): Promise<ActionResult> 
   // the person making it straight out along with everyone else.
   const pv = await setAdminPassword(next);
   await reissueAdminSession(pv);
+  await audit("password_change", adminUser(), { detail: "Admin password changed" });
 
   revalidatePath("/admin/settings");
   return { ok: true };
@@ -378,6 +380,9 @@ export async function prepareArchive(formData: FormData): Promise<ActionResult> 
     downloadedAt: null,
   });
 
+  await audit("archive_prepared", adminUser(), {
+    detail: `${rows.length} case${rows.length === 1 ? "" : "s"} staged (${scope === "all" ? "all cases" : "closed and resolved"})`,
+  });
   revalidatePath("/admin/settings");
   return { ok: true };
 }
@@ -421,6 +426,9 @@ export async function confirmArchiveDelete(formData: FormData): Promise<ActionRe
     note: `${pending.count} cases and ${pending.voiceCount} voice notes exported and removed.`,
   });
   await clearPending();
+  await audit("archive_deleted", adminUser(), {
+    detail: `${pending.count} case${pending.count === 1 ? "" : "s"} and ${pending.voiceCount} recording${pending.voiceCount === 1 ? "" : "s"} removed (${pending.refs[0] ?? ""} to ${pending.refs[pending.refs.length - 1] ?? ""})`,
+  });
 
   revalidatePath("/admin/settings");
   revalidatePath("/admin/cases");
@@ -450,6 +458,9 @@ export async function createBranchLogins(formData: FormData): Promise<LoginsResu
     if (logins.length === 0) {
       return { ok: false, error: "Every branch already has a login. Tick reset to reissue them." };
     }
+    await audit("branch_logins", adminUser(), {
+      detail: `${logins.length} login${logins.length === 1 ? "" : "s"} issued${reset ? " (full reset)" : ""}`,
+    });
     revalidatePath("/admin/settings");
     return { ok: true, logins };
   } catch (e) {

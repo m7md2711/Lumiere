@@ -7,6 +7,7 @@ import { archiveLog, getPending, storageStats } from "@/lib/archive";
 import { listBranchUsers } from "@/lib/users";
 import ChangePasswordForm from "./ChangePasswordForm";
 import BranchLogins from "./BranchLogins";
+import ActivityLog from "./ActivityLog";
 import { StorageMeter } from "./StorageMeter";
 import ArchivePanel from "./ArchivePanel";
 
@@ -53,6 +54,8 @@ export default async function SettingsPage() {
       </section>
 
       <ChangePasswordForm />
+
+      <ActivityLog />
 
       <BranchLogins
         existing={branchUsers.map((u) => ({
