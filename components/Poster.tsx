@@ -24,7 +24,7 @@ export function Poster({
       style={{
         width: "148mm",
         height: "210mm",
-        background: "#0a0806",
+        background: "#080808",
         padding: "11mm",
         WebkitPrintColorAdjust: "exact",
         printColorAdjust: "exact",
@@ -36,7 +36,7 @@ export function Poster({
         style={{
           position: "absolute", inset: "5mm",
           border: "0.4mm solid transparent",
-          borderImage: "linear-gradient(140deg,#c9a227,#f7e7b0,#c9a227,#6b5520) 1",
+          borderImage: "linear-gradient(140deg,#8a7340,#c9a84c,#e4cc8a,#8a7340) 1",
         }}
       />
 
@@ -45,7 +45,7 @@ export function Poster({
         <div
           style={{
             width: "34mm", height: "0.35mm",
-            background: "linear-gradient(90deg,transparent,#c9a227,#f7e7b0,#c9a227,transparent)",
+            background: "linear-gradient(90deg,transparent,#8a7340,#c9a84c,#8a7340,transparent)",
           }}
         />
       </div>
@@ -54,14 +54,14 @@ export function Poster({
         <h1
           style={{
             fontSize: "19pt", fontWeight: 800, lineHeight: 1.15,
-            letterSpacing: "0.04em", textTransform: "uppercase",
-            background: "linear-gradient(100deg,#f7e7b0,#e3c46a,#c9a227)",
+            letterSpacing: "0.18em", textTransform: "uppercase",
+            background: "linear-gradient(100deg,#e4cc8a,#c9a84c,#8a7340)",
             WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
           }}
         >
           Your experience matters
         </h1>
-        <p style={{ marginTop: "2.5mm", fontSize: "10pt", lineHeight: 1.45, color: "#c0b39a" }}>
+        <p style={{ marginTop: "2.5mm", fontSize: "10pt", lineHeight: 1.45, color: "#a89364" }}>
           Share your feedback, suggestion, or concern with us. | Scan here
         </p>
       </div>
@@ -83,13 +83,13 @@ export function Poster({
         <h2
           style={{
             fontSize: "19pt", fontWeight: 800, lineHeight: 1.3,
-            background: "linear-gradient(100deg,#f7e7b0,#e3c46a,#c9a227)",
+            background: "linear-gradient(100deg,#e4cc8a,#c9a84c,#8a7340)",
             WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
           }}
         >
           تجربتكم تهمنا
         </h2>
-        <p style={{ marginTop: "2.5mm", fontSize: "10pt", lineHeight: 1.5, color: "#c0b39a" }}>
+        <p style={{ marginTop: "2.5mm", fontSize: "10pt", lineHeight: 1.5, color: "#a89364" }}>
           شاركونا ملاحظاتكم أو اقتراحاتكم أو ما يشغلكم — امسحوا الرمز هنا
         </p>
       </div>
@@ -98,16 +98,16 @@ export function Poster({
         <div
           style={{
             height: "0.3mm", marginBottom: "2.5mm",
-            background: "linear-gradient(90deg,transparent,#6b5520,transparent)",
+            background: "linear-gradient(90deg,transparent,#3a3226,transparent)",
           }}
         />
-        <div style={{ fontSize: "9.5pt", fontWeight: 600, color: "#e3c46a" }}>
+        <div style={{ fontSize: "9.5pt", fontWeight: 600, color: "#c9a84c" }}>
           {branchEn} · {locEn}
         </div>
-        <div dir="rtl" style={{ fontSize: "8.5pt", color: "#a2957e" }}>
+        <div dir="rtl" style={{ fontSize: "8.5pt", color: "#8a7340" }}>
           {branchAr} · {locAr}
         </div>
-        <div style={{ marginTop: "1mm", fontSize: "6.5pt", color: "#5a5040", wordBreak: "break-all" }}>
+        <div style={{ marginTop: "1mm", fontSize: "6.5pt", color: "#4a4335", wordBreak: "break-all" }}>
           {url}
         </div>
       </div>

@@ -5,11 +5,11 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
-const GOLD = "#e3c46a";
-const GOLD_DEEP = "#9a7c1e";
-const ROSE = "#e06c75";
-const GRID = "#2a2318";
-const AXIS = "#8a7f6c";
+const GOLD = "#c9a84c";
+const GOLD_DEEP = "#8a7340";
+const ROSE = "#c26d63";
+const GRID = "#262626";
+const AXIS = "#6e6450";
 
 type BranchDatum = { name: string; full: string; cases: number; open: number };
 type CategoryDatum = { name: string; full: string; cases: number };
@@ -87,9 +87,9 @@ export default function Charts({
 
 const tooltipStyle = {
   borderRadius: 12,
-  border: "1px solid #3d2f14",
-  background: "#100d09",
-  color: "#f8f1e2",
+  border: "1px solid #3a3226",
+  background: "#1a1a1a",
+  color: "#f1ece0",
   fontSize: 12,
   boxShadow: "0 4px 16px rgb(0 0 0 / 0.6)",
 };
