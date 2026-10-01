@@ -35,7 +35,7 @@ export default async function DashboardPage() {
 
   const rows = (data ?? []) as Row[];
   const now = Date.now();
-  const terminal = (s: string) => s === "resolved" || s === "closed";
+  const terminal = (s: string) => s === "closed";
 
   const open = rows.filter((r) => !terminal(r.status)).length;
   const overdue = rows.filter(
@@ -85,7 +85,7 @@ export default async function DashboardPage() {
 
   // "Resolved at branch" means it closed without ever needing an escalation.
   const escalatedIds = new Set(
-    rows.filter((r) => r.status === "escalated" || r.status === "refund_approved").map((r) => r.id)
+    rows.filter((r) => r.status === "escalated").map((r) => r.id)
   );
   const resolutionSplit = branches.map((b) => {
     const mine = rows.filter((r) => r.branch_id === b.id);

@@ -2,6 +2,7 @@ import { isAdminSession } from "@/lib/scope";
 import { redirect } from "next/navigation";
 import { getBranches, getLocations } from "@/lib/cases";
 import BranchCard from "./BranchCard";
+import AddBranch from "./AddBranch";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export default async function BranchesPage() {
           Names shown to patients, and the QR locations available at each branch.
         </p>
       </div>
+
+      <AddBranch />
 
       <div className="space-y-3">
         {branches.map((b) => (

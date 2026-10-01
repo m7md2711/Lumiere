@@ -153,13 +153,17 @@ export function categoryLabel(c: string, lang: Lang): string {
 }
 
 export const statusLabels: Record<string, { en: string; ar: string }> = {
-  new: { en: "New", ar: "جديدة" },
+  new: { en: "New case", ar: "حالة جديدة" },
+  opened: { en: "Opened", ar: "تم الفتح" },
+  under_review: { en: "Under review", ar: "قيد المراجعة" },
+  solved: { en: "Solved", ar: "تم الحل" },
+  escalated: { en: "Escalated", ar: "مصعّدة" },
+  closed: { en: "Closed", ar: "مغلقة" },
+  // retained so historical rows still render a name
   assigned: { en: "Assigned", ar: "محالة" },
   in_progress: { en: "In progress", ar: "قيد المعالجة" },
-  escalated: { en: "Escalated", ar: "مصعّدة" },
   refund_approved: { en: "Refund approved", ar: "تمت الموافقة على الاسترداد" },
   resolved: { en: "Resolved", ar: "تم الحل" },
-  closed: { en: "Closed", ar: "مغلقة" },
 };
 
 export const priorityLabels: Record<string, { en: string; ar: string }> = {

@@ -23,7 +23,7 @@ export type AuditAction =
   | "signin" | "signin_failed" | "signout"
   | "export" | "password_change" | "branch_logins"
   | "archive_prepared" | "archive_deleted"
-  | "keepalive";
+  | "smtp_settings" | "branch_added" | "keepalive";
 
 export type AuditEntry = {
   at: string;
@@ -126,5 +126,7 @@ export const actionLabels: Record<AuditAction, string> = {
   branch_logins: "Issued branch logins",
   archive_prepared: "Prepared an archive",
   archive_deleted: "Deleted archived cases",
+  smtp_settings: "Changed email settings",
+  branch_added: "Added a branch",
   keepalive: "Scheduled check",
 };

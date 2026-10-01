@@ -6,7 +6,7 @@ import {
   escalate, logContact, markRefundProcessed, type ActionResult,
 } from "../../actions";
 import { statusLabel } from "@/lib/i18n";
-import { NOTE_REQUIRED_STATUSES, PRIORITIES, STATUSES } from "@/lib/types";
+import { BRANCH_STATUSES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES, PRIORITIES, STATUSES } from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
 type Tab = "status" | "note" | "contact" | "escalate" | "refund" | "close";
@@ -21,14 +21,17 @@ const tabs: { id: Tab; label: string }[] = [
 ];
 
 export default function CaseActions({
-  id, status, priority, refundStatus, contactMethod,
+  id, status, priority, refundStatus, contactMethod, isAdmin, hasEvidence,
 }: {
   id: string;
   status: Status;
   priority: Priority;
   refundStatus: string | null;
   contactMethod: string;
+  isAdmin: boolean;
+  hasEvidence: boolean;
 }) {
+  const visibleTabs = isAdmin ? tabs : tabs.filter((x) => x.id !== "close");
   const [tab, setTab] = useState<Tab>("status");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -60,7 +63,7 @@ export default function CaseActions({
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Actions</h2>
 
       <div className="-mx-1 mb-4 flex gap-1 overflow-x-auto pb-1">
-        {tabs.map((tb) => (
+        {visibleTabs.map((tb) => (
           <button
             key={tb.id}
             type="button"
@@ -92,11 +95,36 @@ export default function CaseActions({
                 value={nextStatus}
                 onChange={(e) => setNextStatus(e.target.value as Status)}
               >
-                {STATUSES.map((s) => (
+                {(isAdmin ? STATUSES : BRANCH_STATUSES).map((s) => (
                   <option key={s} value={s}>{statusLabel(s)}</option>
                 ))}
               </select>
+              {!isAdmin ? (
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Closing a case is the administrator&rsquo;s step, once they have reviewed it.
+                </p>
+              ) : null}
             </div>
+
+            {EVIDENCE_REQUIRED_STATUSES.includes(nextStatus) ? (
+              <div>
+                <label className="label" htmlFor="evidence">
+                  Complaint form signed by the patient{hasEvidence ? " (replace)" : " (required)"}
+                </label>
+                <input
+                  id="evidence"
+                  name="evidence"
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png,image/heic,image/webp"
+                  className="field py-2.5 text-sm file:mr-3 file:rounded-full file:border-0
+                             file:bg-clinic-600 file:px-3 file:py-1.5 file:text-xs file:text-ink"
+                  required={!hasEvidence}
+                />
+                <p className="mt-1.5 text-xs text-slate-500">
+                  PDF or a photo, up to 10 MB. Stored privately — only staff with a link can open it.
+                </p>
+              </div>
+            ) : null}
             <div>
               <label className="label">
                 Note{NOTE_REQUIRED_STATUSES.includes(nextStatus) ? " (required)" : " (optional)"}

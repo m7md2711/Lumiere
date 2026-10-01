@@ -1,6 +1,8 @@
 import { db, VOICE_BUCKET } from "./supabase";
 import { categoryLabel } from "./i18n";
 import { clinicDateEnd, clinicDateStart, formatForCsv } from "./time";
+import { notifyNewCase } from "./notify";
+import { FIRST_RESPONSE_HOURS } from "./types";
 import type {
   Branch, Case, CaseEvent, CaseWithBranch, Category, ContactMethod,
   EventType, Lang, PreferredTime, Priority, QrLocation, Status,
@@ -97,7 +99,7 @@ export async function listCases(f: CaseFilters, limit = 300): Promise<CaseWithBr
   if (f.overdue === "1") {
     const now = Date.now();
     rows = rows.filter(
-      (c) => !["resolved", "closed"].includes(c.status) && new Date(c.sla_due_at).getTime() < now
+      (c) => c.status !== "closed" && new Date(c.sla_due_at).getTime() < now
     );
   }
   return rows;
@@ -106,6 +108,32 @@ export async function listCases(f: CaseFilters, limit = 300): Promise<CaseWithBr
 export async function getCase(id: string): Promise<CaseWithBranch | null> {
   const { data } = await db().from("cases").select(CASE_SELECT).eq("id", id).maybeSingle();
   return (data as unknown as CaseWithBranch) ?? null;
+}
+
+/**
+ * How many cases this mobile has raised, including the one in hand. A patient
+ * writing in repeatedly is the strongest signal in the system that something
+ * was not actually fixed.
+ */
+export async function repeatCountFor(mobile: string, excludeId?: string): Promise<number> {
+  if (!mobile) return 0;
+  let q = db().from("cases").select("id", { count: "exact", head: true }).eq("mobile", mobile);
+  if (excludeId) q = q.neq("id", excludeId);
+  const { count } = await q;
+  return (count ?? 0) + (excludeId ? 1 : 0);
+}
+
+/** Repeat counts for a whole list, in one query rather than one per row. */
+export async function repeatCounts(mobiles: string[]): Promise<Record<string, number>> {
+  const unique = Array.from(new Set(mobiles.filter(Boolean)));
+  if (unique.length === 0) return {};
+
+  const { data } = await db().from("cases").select("mobile").in("mobile", unique);
+  const out: Record<string, number> = {};
+  for (const r of (data ?? []) as { mobile: string }[]) {
+    out[r.mobile] = (out[r.mobile] ?? 0) + 1;
+  }
+  return out;
 }
 
 export async function getEvents(caseId: string): Promise<CaseEvent[]> {
@@ -165,7 +193,8 @@ export async function createCase(input: NewCaseInput): Promise<{ ref: string; id
 
   const priority = priorityForCategory(input.category);
   const now = new Date();
-  const slaDue = new Date(now.getTime() + slaHoursFor(priority) * 3600_000);
+  // One clock for everyone: the branch has 24 hours to pick a case up.
+  const slaDue = new Date(now.getTime() + FIRST_RESPONSE_HOURS * 3600_000);
 
   const period =
     String(now.getUTCFullYear()).slice(2) + String(now.getUTCMonth() + 1).padStart(2, "0");
@@ -205,7 +234,7 @@ export async function createCase(input: NewCaseInput): Promise<{ ref: string; id
       contact_method: input.contactMethod,
       preferred_time: input.preferredTime,
       priority,
-      status: "assigned" as Status,
+      status: "new" as Status,
       assigned_to: branch.name_en,
       sla_due_at: slaDue.toISOString(),
     })
@@ -220,56 +249,15 @@ export async function createCase(input: NewCaseInput): Promise<{ ref: string; id
     `Case created from ${branch.name_en}${input.locationCode ? ` · ${input.locationCode}` : ""} and assigned to ${branch.name_en}.`
   );
 
-  void notifyNewCase({
-    ref: row.ref,
-    branch: branch.name_en,
-    category: categoryLabel(input.category, "en"),
-    priority,
-    name,
-    mobile,
-    description: description || "(voice note only)",
-    id: row.id,
-  });
+  // Fire and forget: a mail server being slow must not hold up a patient.
+  void (async () => {
+    const full = await getCase(row.id);
+    if (!full) return;
+    const repeat = await repeatCountFor(mobile);
+    await notifyNewCase(full, repeat);
+  })().catch(() => {});
 
   return { ref: row.ref, id: row.id };
-}
-
-// ------------------------------------------------------------- notify
-
-type NotifyPayload = {
-  ref: string; branch: string; category: string; priority: string;
-  name: string; mobile: string; description: string; id: string;
-};
-
-/** Best-effort email alert. No key configured means no email, and no error. */
-async function notifyNewCase(p: NotifyPayload): Promise<void> {
-  const key = process.env.RESEND_API_KEY;
-  const to = process.env.ALERT_EMAIL_TO;
-  if (!key || !to) return;
-
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "";
-  try {
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "Lumiere Feedback <onboarding@resend.dev>",
-        to: to.split(",").map((s) => s.trim()),
-        subject: `[${p.priority.toUpperCase()}] ${p.ref} — ${p.branch}`,
-        html:
-          `<h2>New patient feedback</h2>` +
-          `<p><b>Reference:</b> ${p.ref}<br>` +
-          `<b>Branch:</b> ${p.branch}<br>` +
-          `<b>Category:</b> ${p.category}<br>` +
-          `<b>Priority:</b> ${p.priority}<br>` +
-          `<b>Patient:</b> ${p.name} — ${p.mobile}</p>` +
-          `<p>${p.description}</p>` +
-          (base ? `<p><a href="${base}/admin/cases/${p.id}">Open the case</a></p>` : ""),
-      }),
-    });
-  } catch {
-    // A down mailer must never fail a patient's submission.
-  }
 }
 
 // ------------------------------------------------------------- csv
@@ -292,7 +280,7 @@ export function casesToCsv(rows: CaseWithBranch[]): string {
     [
       c.ref, formatForCsv(c.created_at), c.branches?.name_en ?? "", c.qr_locations?.label_en ?? "",
       c.category, c.priority, c.status, c.assigned_to ?? "", formatForCsv(c.sla_due_at),
-      !["resolved", "closed"].includes(c.status) && new Date(c.sla_due_at).getTime() < now
+      c.status !== "closed" && new Date(c.sla_due_at).getTime() < now
         ? "YES" : "",
       c.patient_name, c.mobile, c.preferred_lang, c.contact_method, c.preferred_time,
       c.description ?? "", c.voice_url ?? "", c.resolution_note ?? "", c.closure_reason ?? "",

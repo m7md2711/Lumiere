@@ -5,9 +5,12 @@ import { formatLongDateTime } from "@/lib/time";
 import { db } from "@/lib/supabase";
 import { archiveLog, getPending, storageStats } from "@/lib/archive";
 import { listBranchUsers } from "@/lib/users";
+import { getBranches } from "@/lib/cases";
+import { getSmtp, getBranchEmails, redactSmtp } from "@/lib/settings";
 import ChangePasswordForm from "./ChangePasswordForm";
 import BranchLogins from "./BranchLogins";
 import ActivityLog from "./ActivityLog";
+import EmailSettings from "./EmailSettings";
 import { StorageMeter } from "./StorageMeter";
 import ArchivePanel from "./ArchivePanel";
 
@@ -26,6 +29,10 @@ export default async function SettingsPage() {
     getPending(),
     archiveLog(),
     listBranchUsers(),
+  ]);
+
+  const [smtp, branchEmails, allBranches] = await Promise.all([
+    getSmtp(), getBranchEmails(), getBranches(),
   ]);
 
   const changedAt = (data as { updated_at: string } | null)?.updated_at ?? null;
@@ -54,6 +61,13 @@ export default async function SettingsPage() {
       </section>
 
       <ChangePasswordForm />
+
+      <EmailSettings
+        smtp={redactSmtp(smtp)}
+        branches={allBranches.map((b) => ({
+          code: b.code, name: b.name_en, email: branchEmails[b.code] ?? "",
+        }))}
+      />
 
       <ActivityLog />
 

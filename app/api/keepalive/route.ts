@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { audit, prune } from "@/lib/audit";
 import { db } from "@/lib/supabase";
+import { listCases } from "@/lib/cases";
+import { isOverdue } from "@/lib/types";
+import { notifyOverdue } from "@/lib/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,10 +33,18 @@ export async function GET(req: Request) {
       .select("id", { count: "exact", head: true });
     if (error) throw error;
 
-    await audit("keepalive", "system", { detail: `${count ?? 0} branches reachable` });
+    // Same sweep reports anything nobody picked up inside 24 hours.
+    const late = (await listCases({}, 1000)).filter(isOverdue);
+    if (late.length) await notifyOverdue(late);
+
+    await audit("keepalive", "system", {
+      detail: `${count ?? 0} branches reachable, ${late.length} overdue`,
+    });
     await prune();
 
-    return NextResponse.json({ ok: true, branches: count ?? 0, at: new Date().toISOString() });
+    return NextResponse.json({
+      ok: true, branches: count ?? 0, overdue: late.length, at: new Date().toISOString(),
+    });
   } catch (e) {
     console.error("keepalive failed", e);
     return NextResponse.json({ ok: false, error: "Database unreachable" }, { status: 500 });

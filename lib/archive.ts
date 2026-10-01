@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { deleteEvidenceFor } from "./evidence";
 import { db, VOICE_BUCKET } from "./supabase";
 import { casesToCsv } from "./cases";
 import { formatForCsv } from "./time";

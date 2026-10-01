@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth";
 import { assertCaseInScope } from "@/lib/scope";
 import { validateNewPassword } from "@/lib/password";
-import { addEvent, slaHoursFor } from "@/lib/cases";
+import { addEvent, getCase, slaHoursFor } from "@/lib/cases";
 import { statusLabel } from "@/lib/i18n";
 import { formatLongDateTime } from "@/lib/time";
 import {
@@ -18,7 +18,14 @@ import {
 import { listCases } from "@/lib/cases";
 import { generateBranchLogins, type GeneratedLogin } from "@/lib/users";
 import { audit } from "@/lib/audit";
-import { NOTE_REQUIRED_STATUSES, STATUSES } from "@/lib/types";
+import { getSmtp, saveSmtp, setBranchEmail, type SmtpSettings } from "@/lib/settings";
+import { sendMail } from "@/lib/mailer";
+import { getEvidence, setEvidence, uploadEvidence } from "@/lib/evidence";
+import { notifyClosed, notifyReadyForReview } from "@/lib/notify";
+import { currentSession } from "@/lib/auth";
+import {
+  BRANCH_STATUSES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES, STATUSES,
+} from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -38,16 +45,53 @@ export async function changeStatus(formData: FormData): Promise<ActionResult> {
   await assertCaseInScope(id);
   const status = String(formData.get("status") ?? "") as Status;
   const note = String(formData.get("note") ?? "").trim();
+  const session = await currentSession();
+  const isAdmin = session?.role === "admin";
 
   if (!id || !STATUSES.includes(status)) return { ok: false, error: "Unknown status." };
+
+  // Closing is the review step, and the review belongs to the administrator.
+  if (status === "closed" && !isAdmin) {
+    return { ok: false, error: "Only the administrator can close a case, after reviewing it." };
+  }
+  if (!isAdmin && !BRANCH_STATUSES.includes(status)) {
+    return { ok: false, error: "That status is not available to a branch." };
+  }
   if (NOTE_REQUIRED_STATUSES.includes(status) && !note) {
     return { ok: false, error: `Moving a case to "${statusLabel(status)}" needs a note.` };
   }
 
+  const existing = await getCase(id);
+  if (!existing) return { ok: false, error: "That case no longer exists." };
+
+  // Solving is a claim that the patient signed off; it needs the form.
+  const file = formData.get("evidence");
+  const hasNewFile = file instanceof File && file.size > 0;
+  const alreadyAttached = await getEvidence(id);
+  if (EVIDENCE_REQUIRED_STATUSES.includes(status) && !hasNewFile && !alreadyAttached) {
+    return {
+      ok: false,
+      error: "Attach the complaint form signed by the patient before marking this solved.",
+    };
+  }
+
   const patch: Record<string, unknown> = { status };
-  if (status === "closed" || status === "resolved") {
+
+  if (hasNewFile) {
+    const up = await uploadEvidence(existing.ref, file as File);
+    if (!up.ok) return { ok: false, error: up.error };
+    await setEvidence(id, {
+      path: up.path,
+      name: up.name,
+      at: new Date().toISOString(),
+      by: session?.username ?? "unknown",
+    });
+    await addEvent(id, "evidence", `Signed complaint form attached: ${up.name}`);
+  }
+
+  if (status === "closed") {
     if (note) patch.resolution_note = note;
-    if (status === "closed") patch.closed_at = new Date().toISOString();
+    patch.closed_at = new Date().toISOString();
   }
 
   const { error } = await db().from("cases").update(patch).eq("id", id);
@@ -58,6 +102,16 @@ export async function changeStatus(formData: FormData): Promise<ActionResult> {
     status === "closed" ? "closed" : "status",
     `Status changed to ${statusLabel(status)}.${note ? ` ${note}` : ""}`
   );
+
+  // The administrator is told when a case needs reviewing, not on every move.
+  const fresh = await getCase(id);
+  if (fresh) {
+    if (status === "solved") void notifyReadyForReview(fresh, note).catch(() => {});
+    if (status === "closed") {
+      void notifyClosed(fresh, note, Number(fresh.satisfaction ?? 0)).catch(() => {});
+    }
+  }
+
   refresh(id);
   return { ok: true };
 }
@@ -111,10 +165,11 @@ export async function logContact(formData: FormData): Promise<ActionResult> {
   const outcome = String(formData.get("outcome") ?? "").trim();
   if (!id || !outcome) return { ok: false, error: "Describe the outcome of the contact." };
 
-  // First contact moves a case off the assigned pile automatically.
+  // Reaching out is what "under review" means, so record it without asking.
   const { data } = await db().from("cases").select("status").eq("id", id).maybeSingle();
-  if ((data as { status: Status } | null)?.status === "assigned") {
-    await db().from("cases").update({ status: "in_progress" }).eq("id", id);
+  const now = (data as { status: Status } | null)?.status;
+  if (now === "new" || now === "opened") {
+    await db().from("cases").update({ status: "under_review" }).eq("id", id);
   }
 
   await addEvent(id, "contact", `Contact attempt by ${method}: ${outcome}`);
@@ -152,11 +207,9 @@ export async function approveRefund(formData: FormData): Promise<ActionResult> {
 
   const { error } = await db()
     .from("cases")
-    .update({
-      status: "refund_approved",
-      refund_amount: amount,
-      refund_status: "pending",
-    })
+    // A refund is a fact about money, not a stage: the case still has to be
+    // solved by the branch and closed by the administrator.
+    .update({ refund_amount: amount, refund_status: "pending" })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
 
@@ -181,7 +234,7 @@ export async function markRefundProcessed(formData: FormData): Promise<ActionRes
 }
 
 export async function closeCase(formData: FormData): Promise<ActionResult> {
-  await requireSession();
+  await requireAdmin();
 
   const id = String(formData.get("id") ?? "");
   await assertCaseInScope(id);
@@ -357,7 +410,8 @@ export async function prepareArchive(formData: FormData): Promise<ActionResult> 
 
   let rows = await listCases({}, 5000);
   if (scope !== "all") {
-    rows = rows.filter((c) => c.status === "closed" || c.status === "resolved");
+    // Only closed cases are finished now; "solved" still awaits review.
+    rows = rows.filter((c) => c.status === "closed");
   }
   if (beforeRaw) {
     const cutoff = new Date(`${beforeRaw}T23:59:59.999+04:00`).getTime();
@@ -466,4 +520,136 @@ export async function createBranchLogins(formData: FormData): Promise<LoginsResu
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not create logins." };
   }
+}
+
+/**
+ * Called when a branch first opens a case. Viewing it is the response, so the
+ * clock stops here rather than waiting for someone to remember to set a status.
+ */
+export async function markOpened(caseId: string): Promise<void> {
+  try {
+    const session = await currentSession();
+    if (!session) return;
+
+    const { data } = await db().from("cases").select("status").eq("id", caseId).maybeSingle();
+    if ((data as { status: Status } | null)?.status !== "new") return;
+
+    await db().from("cases").update({ status: "opened" }).eq("id", caseId);
+    await addEvent(caseId, "status", `Opened by ${session.username}.`);
+    revalidatePath("/admin/cases");
+  } catch {
+    // Opening a case must never fail because of bookkeeping.
+  }
+}
+
+// -------------------------------------------------------------- email setup
+
+export async function saveSmtpSettings(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const existing = await getSmtp();
+  const typed = String(formData.get("pass") ?? "");
+
+  const next: SmtpSettings = {
+    host: String(formData.get("host") ?? "").trim(),
+    port: Number(formData.get("port") ?? 465) || 465,
+    secure: formData.get("secure") === "on",
+    user: String(formData.get("user") ?? "").trim(),
+    // Blank means "leave it alone" — the field is never pre-filled with it.
+    pass: typed || existing.pass,
+    fromName: String(formData.get("fromName") ?? "").trim() || "Lumiere Patient Feedback",
+    fromEmail: String(formData.get("fromEmail") ?? "").trim(),
+    adminEmail: String(formData.get("adminEmail") ?? "").trim(),
+    enabled: formData.get("enabled") === "on",
+  };
+
+  if (!next.host) return { ok: false, error: "Enter the SMTP server address." };
+  if (!next.fromEmail) return { ok: false, error: "Enter the address mail should come from." };
+  if (next.enabled && !next.pass) return { ok: false, error: "Enter the password before switching notifications on." };
+
+  await saveSmtp(next);
+  await audit("smtp_settings", adminUser(), {
+    detail: next.enabled ? "Email notifications on" : "Email notifications off",
+  });
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
+
+export async function sendTestEmail(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const to = String(formData.get("to") ?? "").trim();
+  if (!to) return { ok: false, error: "Enter an address to send the test to." };
+
+  const res = await sendMail(
+    [to],
+    "Lumiere — test message",
+    `<p style="margin:0 0 4px;font-size:16px;color:#c9a84c">Email is working</p>
+     <p style="margin:0;color:#a89364;font-size:13px">
+       If you can read this, the clinic's feedback system can reach you. Nothing else
+       needs doing.
+     </p>`
+  );
+  if (!res.ok) return { ok: false, error: res.error };
+
+  await audit("smtp_settings", adminUser(), { detail: `Test message sent to ${to}` });
+  return { ok: true };
+}
+
+export async function saveBranchEmail(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const code = String(formData.get("code") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  if (!code) return { ok: false, error: "Missing branch." };
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: "That does not look like an email address." };
+  }
+
+  await setBranchEmail(code, email);
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/branches");
+  return { ok: true };
+}
+
+// ------------------------------------------------------------- add a branch
+
+export async function createBranch(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  const name_en = String(formData.get("name_en") ?? "").trim();
+  const name_ar = String(formData.get("name_ar") ?? "").trim();
+
+  if (!/^[A-Z0-9]{2,8}$/.test(code)) {
+    return { ok: false, error: "Use 2–8 letters or digits for the code, for example BR11." };
+  }
+  if (!name_en || !name_ar) return { ok: false, error: "Both names are required." };
+
+  const { data, error } = await db()
+    .from("branches")
+    .insert({ code, name_en, name_ar, is_active: true })
+    .select("id")
+    .single();
+  if (error) {
+    return {
+      ok: false,
+      error: error.code === "23505" ? "That branch code already exists." : error.message,
+    };
+  }
+
+  // A branch with no QR points cannot receive anything, so seed the usual three.
+  const branchId = (data as { id: string }).id;
+  await db().from("qr_locations").insert([
+    { branch_id: branchId, code: "REC", label_en: "Reception", label_ar: "الاستقبال" },
+    { branch_id: branchId, code: "TR1", label_en: "Treatment Room", label_ar: "غرفة العلاج" },
+    { branch_id: branchId, code: "WA1", label_en: "Waiting Area", label_ar: "منطقة الانتظار" },
+  ]);
+
+  await audit("branch_added", adminUser(), { detail: `${code} — ${name_en}` });
+  revalidatePath("/admin/branches");
+  revalidatePath("/admin/qr");
+  revalidatePath("/admin/settings");
+  revalidatePath("/start");
+  return { ok: true };
 }

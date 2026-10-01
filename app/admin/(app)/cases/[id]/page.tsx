@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getEvents, toWhatsApp } from "@/lib/cases";
+import { getEvents, repeatCountFor, toWhatsApp } from "@/lib/cases";
+import { getEvidence, signedUrlFor } from "@/lib/evidence";
+import { currentSession } from "@/lib/auth";
+import { markOpened } from "../../actions";
 import { getCaseScoped } from "@/lib/scope";
 import { categoryLabel } from "@/lib/i18n";
 import { isOverdue } from "@/lib/types";
@@ -13,7 +16,18 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   const c = await getCaseScoped(params.id);
   if (!c) notFound();
 
-  const events = await getEvents(c.id);
+  // Looking at a case is the response, so the clock stops here. No-ops unless
+  // the case is still `new`.
+  await markOpened(c.id);
+
+  const [events, session, evidence, repeat] = await Promise.all([
+    getEvents(c.id),
+    currentSession(),
+    getEvidence(c.id),
+    repeatCountFor(c.mobile, c.id),
+  ]);
+  const isAdmin = session?.role === "admin";
+  const evidenceUrl = evidence ? await signedUrlFor(evidence.path) : null;
   const wa = toWhatsApp(c.mobile);
 
   return (
@@ -35,6 +49,14 @@ export default async function CaseDetail({ params }: { params: { id: string } })
             <StatusPill status={c.status} />
             <PriorityPill priority={c.priority} />
             {isOverdue(c) ? <OverduePill /> : null}
+            {repeat > 1 ? (
+              <span
+                className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-amber-300 ring-1 ring-amber-900"
+                title="This mobile number has contacted us before"
+              >
+                {repeat} cases from this patient
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -102,12 +124,35 @@ export default async function CaseDetail({ params }: { params: { id: string } })
         ) : null}
       </section>
 
+      <section className="card p-5">
+        <h2 className="mb-3 text-xs uppercase tracking-label text-slate-500">
+          Signed complaint form
+        </h2>
+        {evidence && evidenceUrl ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <a href={evidenceUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+              View {evidence.name}
+            </a>
+            <span className="text-xs text-slate-500">
+              Attached by {evidence.by} · {shortDate(evidence.at)}
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm italic text-slate-400">
+            Nothing attached yet. The branch must attach the form the patient signed before
+            this case can be marked solved.
+          </p>
+        )}
+      </section>
+
       <CaseActions
         id={c.id}
         status={c.status}
         priority={c.priority}
         refundStatus={c.refund_status}
         contactMethod={c.contact_method}
+        isAdmin={Boolean(isAdmin)}
+        hasEvidence={Boolean(evidence)}
       />
 
       <section className="card p-5">

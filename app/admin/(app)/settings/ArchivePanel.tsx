@@ -47,7 +47,7 @@ export default function ArchivePanel({
           <div>
             <label className="label" htmlFor="scope">What to archive</label>
             <select id="scope" name="scope" className="field" defaultValue="closed">
-              <option value="closed">Closed and resolved cases only (recommended)</option>
+              <option value="closed">Closed cases only (recommended)</option>
               <option value="all">Every case, including open ones</option>
             </select>
           </div>

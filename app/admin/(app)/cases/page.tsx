@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getBranches, type CaseFilters } from "@/lib/cases";
+import { getBranches, repeatCounts, type CaseFilters } from "@/lib/cases";
 import { listCasesScoped, isAdminSession } from "@/lib/scope";
 import { categoryLabel, priorityLabel, statusLabel } from "@/lib/i18n";
 import { CATEGORIES, PRIORITIES, STATUSES, isOverdue } from "@/lib/types";
@@ -26,6 +26,9 @@ export default async function CasesPage({
     listCasesScoped(filters),
     isAdminSession(),
   ]);
+  // One query for the whole page rather than one per row.
+  const repeats = await repeatCounts(cases.map((c) => c.mobile));
+  const repeatOf = (m: string) => repeats[m] ?? 1;
   const qs = new URLSearchParams(
     Object.entries(filters).filter(([, v]) => v) as [string, string][]
   ).toString();
@@ -84,6 +87,11 @@ export default async function CasesPage({
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               <PriorityPill priority={c.priority} />
               {isOverdue(c) ? <OverduePill /> : null}
+              {repeatOf(c.mobile) > 1 ? (
+                <span className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-amber-300 ring-1 ring-amber-900">
+                  {repeatOf(c.mobile)}× patient
+                </span>
+              ) : null}
               {c.voice_url ? (
                 <span className="chip" title="Has a voice note"><IconMic className="h-3.5 w-3.5" /> Voice</span>
               ) : null}
@@ -119,7 +127,14 @@ export default async function CasesPage({
                 </td>
                 <td className="px-4 py-3">
                   <div className="font-medium text-slate-800">{c.patient_name}</div>
-                  <div className="tabular text-xs text-slate-500">{c.mobile}</div>
+                  <div className="tabular text-xs text-slate-500">
+                    {c.mobile}
+                    {repeatOf(c.mobile) > 1 ? (
+                      <span className="ms-2 text-amber-300" title="Has contacted us before">
+                        {repeatOf(c.mobile)}× patient
+                      </span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{c.branches?.name_en ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-600">
