@@ -1,5 +1,6 @@
 import { getBranches, getLocations } from "@/lib/cases";
 import { formUrl, qrDataUrl } from "@/lib/qr";
+import { INTERNAL_CODES } from "@/lib/sources";
 import { Poster } from "@/components/Poster";
 import PrintButton from "./PrintButton";
 
@@ -12,7 +13,7 @@ export default async function PrintAllPage() {
   const posters = await Promise.all(
     active.flatMap((b) =>
       locations
-        .filter((l) => l.branch_id === b.id)
+        .filter((l) => l.branch_id === b.id && !INTERNAL_CODES.includes(l.code as never))
         .map(async (l) => {
           const url = formUrl(b.code, l.code);
           return {

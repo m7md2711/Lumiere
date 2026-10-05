@@ -6,12 +6,13 @@ import { useState } from "react";
 type Opt = { v: string; label: string };
 
 export default function Filters({
-  branches, statuses, categories, priorities,
+  branches, statuses, categories, priorities, sources,
 }: {
   branches: { id: string; name: string; code: string }[];
   statuses: Opt[];
   categories: Opt[];
   priorities: Opt[];
+  sources: Opt[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -25,7 +26,7 @@ export default function Filters({
     router.push(`/admin/cases?${next.toString()}`);
   }
 
-  const active = ["branch", "status", "category", "priority", "from", "to", "overdue"].filter((k) =>
+  const active = ["branch", "status", "category", "priority", "source", "from", "to", "overdue"].filter((k) =>
     params.get(k)
   ).length;
 
@@ -65,6 +66,8 @@ export default function Filters({
             options={categories} />
           <Select label="Priority" value={params.get("priority") ?? ""} onChange={(v) => set("priority", v)}
             options={priorities} />
+          <Select label="Came in via" value={params.get("source") ?? ""} onChange={(v) => set("source", v)}
+            options={sources} />
 
           <div>
             <label className="label">From</label>

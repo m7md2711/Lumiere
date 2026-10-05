@@ -6,11 +6,13 @@ import { db } from "@/lib/supabase";
 import { archiveLog, getPending, storageStats } from "@/lib/archive";
 import { listBranchUsers } from "@/lib/users";
 import { getBranches } from "@/lib/cases";
-import { getSmtp, getBranchEmails, redactSmtp } from "@/lib/settings";
+import { getSmtp, getBranchEmails, redactSmtp, readJson } from "@/lib/settings";
+import { INTAKE_KEY, defaultIntakeCodes, type IntakeCodes } from "@/lib/sources";
 import ChangePasswordForm from "./ChangePasswordForm";
 import BranchLogins from "./BranchLogins";
 import ActivityLog from "./ActivityLog";
 import EmailSettings from "./EmailSettings";
+import IntakeLinks from "./IntakeLinks";
 import { StorageMeter } from "./StorageMeter";
 import ArchivePanel from "./ArchivePanel";
 
@@ -34,6 +36,7 @@ export default async function SettingsPage() {
   const [smtp, branchEmails, allBranches] = await Promise.all([
     getSmtp(), getBranchEmails(), getBranches(),
   ]);
+  const intake = await readJson<IntakeCodes>(INTAKE_KEY, defaultIntakeCodes);
 
   const changedAt = (data as { updated_at: string } | null)?.updated_at ?? null;
 
@@ -61,6 +64,11 @@ export default async function SettingsPage() {
       </section>
 
       <ChangePasswordForm />
+
+      <IntakeLinks
+        base={(process.env.NEXT_PUBLIC_BASE_URL ?? "").replace(/\/+$/, "")}
+        codes={{ branch: intake.branch, callcenter: intake["call-center"] }}
+      />
 
       <EmailSettings
         smtp={redactSmtp(smtp)}

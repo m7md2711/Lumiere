@@ -5,6 +5,7 @@ import { categoryLabel, priorityLabel, statusLabel } from "@/lib/i18n";
 import { CATEGORIES, PRIORITIES, STATUSES, isOverdue } from "@/lib/types";
 import { OverduePill, PriorityPill, StatusPill, shortDate } from "@/components/Pills";
 import { IconMic } from "@/components/Icons";
+import { sourceOf, sourceShort } from "@/lib/sources";
 import Filters from "./Filters";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default async function CasesPage({
     category: searchParams.category, priority: searchParams.priority,
     from: searchParams.from, to: searchParams.to,
     q: searchParams.q, overdue: searchParams.overdue,
+    source: searchParams.source,
   };
 
   const [branches, cases, admin] = await Promise.all([
@@ -64,6 +66,11 @@ export default async function CasesPage({
         statuses={STATUSES.map((s) => ({ v: s, label: statusLabel(s) }))}
         categories={CATEGORIES.map((c) => ({ v: c, label: categoryLabel(c, "en") }))}
         priorities={PRIORITIES.map((p) => ({ v: p, label: priorityLabel(p) }))}
+        sources={[
+          { v: "internal", label: "Logged by staff (either)" },
+          { v: "MGR", label: "Branch manager" },
+          { v: "CC", label: "Call centre" },
+        ]}
       />
 
       {cases.length === 0 ? (
@@ -90,6 +97,11 @@ export default async function CasesPage({
               {repeatOf(c.mobile) > 1 ? (
                 <span className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-amber-300 ring-1 ring-amber-900">
                   {repeatOf(c.mobile)}× patient
+                </span>
+              ) : null}
+              {sourceOf(c.qr_locations?.code) !== "patient" ? (
+                <span className="inline-flex rounded-full bg-clinic-50 px-2.5 py-1 text-xs text-clinic-700 ring-1 ring-clinic-300">
+                  {sourceShort[sourceOf(c.qr_locations?.code)]}
                 </span>
               ) : null}
               {c.voice_url ? (
@@ -136,7 +148,14 @@ export default async function CasesPage({
                     ) : null}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{c.branches?.name_en ?? "—"}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {c.branches?.name_en ?? "—"}
+                  {sourceOf(c.qr_locations?.code) !== "patient" ? (
+                    <div className="text-xs text-clinic-600">
+                      {sourceShort[sourceOf(c.qr_locations?.code)]}
+                    </div>
+                  ) : null}
+                </td>
                 <td className="px-4 py-3 text-slate-600">
                   {categoryLabel(c.category, "en")}
                   {c.voice_url ? (

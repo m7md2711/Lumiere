@@ -68,6 +68,7 @@ const CASE_SELECT =
 
 export type CaseFilters = {
   branch?: string;
+  source?: string;
   status?: string;
   category?: string;
   priority?: string;
@@ -96,6 +97,11 @@ export async function listCases(f: CaseFilters, limit = 300): Promise<CaseWithBr
   if (error) throw error;
 
   let rows = (data ?? []) as unknown as CaseWithBranch[];
+  if (f.source) {
+    // "internal" is both staff channels together; otherwise an exact intake point.
+    const wanted = f.source === "internal" ? ["MGR", "CC"] : [f.source];
+    rows = rows.filter((c) => wanted.includes(c.qr_locations?.code ?? ""));
+  }
   if (f.overdue === "1") {
     const now = Date.now();
     rows = rows.filter(

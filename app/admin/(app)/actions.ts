@@ -18,7 +18,8 @@ import {
 import { listCases } from "@/lib/cases";
 import { generateBranchLogins, type GeneratedLogin } from "@/lib/users";
 import { audit } from "@/lib/audit";
-import { getSmtp, saveSmtp, setBranchEmail, type SmtpSettings } from "@/lib/settings";
+import { getSmtp, saveSmtp, setBranchEmail, writeJson, type SmtpSettings } from "@/lib/settings";
+import { INTAKE_KEY, ensureInternalLocations, type IntakeCodes } from "@/lib/sources";
 import { sendMail } from "@/lib/mailer";
 import { getEvidence, setEvidence, uploadEvidence } from "@/lib/evidence";
 import { notifyClosed, notifyReadyForReview } from "@/lib/notify";
@@ -651,5 +652,28 @@ export async function createBranch(formData: FormData): Promise<ActionResult> {
   revalidatePath("/admin/qr");
   revalidatePath("/admin/settings");
   revalidatePath("/start");
+  return { ok: true };
+}
+
+// ------------------------------------------------------------ intake links
+
+export async function saveIntakeCodes(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const clean = (v: unknown) => String(v ?? "").trim().replace(/[^A-Za-z0-9_-]/g, "");
+  const codes: IntakeCodes = {
+    branch: clean(formData.get("branch")),
+    "call-center": clean(formData.get("callcenter")),
+  };
+
+  await writeJson(INTAKE_KEY, codes);
+  await ensureInternalLocations();
+  await audit("intake_codes", adminUser(), {
+    detail:
+      codes.branch && codes["call-center"]
+        ? "Both intake links protected"
+        : "One or both intake links left unguarded",
+  });
+  revalidatePath("/admin/settings");
   return { ok: true };
 }

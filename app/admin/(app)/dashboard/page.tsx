@@ -4,6 +4,8 @@ import { categoryLabel } from "@/lib/i18n";
 import { CATEGORIES } from "@/lib/types";
 import { clinicDayStart, clinicMonthStart, formatDayLabel } from "@/lib/time";
 import { sessionBranchId } from "@/lib/auth";
+import { sourceOf, sourceShort, type Source } from "@/lib/sources";
+import { getLocations } from "@/lib/cases";
 import type { Case } from "@/lib/types";
 import Charts from "./Charts";
 
@@ -11,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 type Row = Pick<
   Case,
-  "id" | "branch_id" | "category" | "status" | "priority" | "sla_due_at"
+  "id" | "branch_id" | "qr_location_id" | "category" | "status" | "priority" | "sla_due_at"
   | "created_at" | "closed_at" | "refund_amount" | "refund_status" | "satisfaction"
 >;
 
@@ -21,13 +23,16 @@ export default async function DashboardPage() {
   let query = db()
     .from("cases")
     .select(
-      "id, branch_id, category, status, priority, sla_due_at, created_at, closed_at, refund_amount, refund_status, satisfaction"
+      "id, branch_id, qr_location_id, category, status, priority, sla_due_at, created_at, closed_at, refund_amount, refund_status, satisfaction"
     )
     .order("created_at", { ascending: false })
     .limit(5000);
   if (scopeBranchId) query = query.eq("branch_id", scopeBranchId);
 
-  const [allBranches, { data }] = await Promise.all([getBranches(), query]);
+  const [allBranches, { data }, allLocations] = await Promise.all([
+    getBranches(), query, getLocations(),
+  ]);
+  const locCode = new Map(allLocations.map((l) => [l.id, l.code]));
   // A branch session charts only itself, so the per-branch bars stay meaningful.
   const branches = scopeBranchId
     ? allBranches.filter((b) => b.id === scopeBranchId)
@@ -96,6 +101,21 @@ export default async function DashboardPage() {
     };
   });
 
+  // Where cases came from. An internally logged complaint never touched the
+  // patient form, so it is worth seeing apart from the self-service ones.
+  const bySource = rows.reduce<Record<Source, number>>(
+    (acc, r) => {
+      const s = sourceOf(locCode.get(r.qr_location_id ?? "") ?? null);
+      acc[s] += 1;
+      return acc;
+    },
+    { patient: 0, branch_manager: 0, call_center: 0 }
+  );
+  const internalTotal = bySource.branch_manager + bySource.call_center;
+  const openInternal = rows.filter(
+    (r) => !terminal(r.status) && sourceOf(locCode.get(r.qr_location_id ?? "") ?? null) !== "patient"
+  ).length;
+
   const trend: { name: string; cases: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const day = clinicDayStart(new Date(Date.now() - i * 86_400_000));
@@ -128,6 +148,35 @@ export default async function DashboardPage() {
           value={avgSatisfaction ? `${avgSatisfaction.toFixed(1)} / 5` : "—"}
         />
       </div>
+
+      <section className="card p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="text-xs uppercase tracking-label text-slate-500">Where cases come from</h2>
+          <span className="text-xs text-slate-500">
+            {internalTotal} logged by staff · {openInternal} of those still open
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {(["patient", "branch_manager", "call_center"] as Source[]).map((s) => {
+            const n = bySource[s];
+            const pct = rows.length ? Math.round((n / rows.length) * 100) : 0;
+            return (
+              <div key={s} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs text-slate-500">{sourceShort[s]}</div>
+                <div className="tabular mt-1 text-2xl text-clinic-800">{n}</div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className={s === "patient" ? "h-full bg-clinic-600" : "h-full bg-clinic-400"}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <div className="tabular mt-1.5 text-xs text-slate-400">{pct}% of all cases</div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <Charts
         byBranch={byBranch}

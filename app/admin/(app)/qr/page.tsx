@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getBranches, getLocations } from "@/lib/cases";
 import { formUrl, qrDataUrl } from "@/lib/qr";
+import { INTERNAL_CODES } from "@/lib/sources";
 import QrGrid from "./QrGrid";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,10 @@ export default async function QrPage({
     return <p className="card p-6 text-sm text-slate-500">No branches yet — run the seed SQL.</p>;
   }
 
-  const locations = await getLocations(selected.id);
+  const locations = (await getLocations(selected.id)).filter(
+    // Branch-manager and call-centre intake are links, not posters.
+    (l) => !INTERNAL_CODES.includes(l.code as never)
+  );
   const items = await Promise.all(
     locations.map(async (l) => {
       const url = formUrl(selected.code, l.code);
