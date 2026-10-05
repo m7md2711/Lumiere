@@ -27,9 +27,14 @@ export default function LoginPage({
     await issueSession(identity);
     await audit("signin", identity.username, {
       branch: identity.role === "branch" ? identity.branchName : null,
-      detail: identity.role === "admin" ? "Administrator" : "Branch staff",
+      detail:
+        identity.role === "admin" ? "Administrator"
+        : identity.role === "call_center" ? "Call centre"
+        : "Branch staff",
     });
-    redirect(next.startsWith("/admin") ? next : "/admin/cases");
+    // The call centre has no clinic-wide case list; send it where it works.
+    const home = identity.role === "call_center" ? "/admin/logged" : "/admin/cases";
+    redirect(next.startsWith("/admin") && next !== "/admin/cases" ? next : home);
   }
 
   return (
