@@ -9,6 +9,7 @@ import { categoryLabel } from "@/lib/i18n";
 import { isOverdue } from "@/lib/types";
 import { OverduePill, PriorityPill, StatusPill, shortDate } from "@/components/Pills";
 import CaseActions from "./CaseActions";
+import DeleteCase from "./DeleteCase";
 
 export const dynamic = "force-dynamic";
 
@@ -176,6 +177,8 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           ))}
         </ol>
       </section>
+
+      {isAdmin ? <DeleteCase id={c.id} caseRef={c.ref} /> : null}
     </div>
   );
 }

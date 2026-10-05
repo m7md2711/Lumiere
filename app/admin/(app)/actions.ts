@@ -677,3 +677,40 @@ export async function saveIntakeCodes(formData: FormData): Promise<ActionResult>
   revalidatePath("/admin/settings");
   return { ok: true };
 }
+
+// ------------------------------------------------------- delete one case
+
+/**
+ * Removes a single case outright — for a test entry, a duplicate or spam.
+ * Unlike archiving there is no export first, so it is administrator-only,
+ * needs the archive password, and asks for the reference to be typed out:
+ * the point is that it cannot happen by a mis-click on the wrong row.
+ */
+export async function deleteOneCase(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const id = String(formData.get("id") ?? "");
+  const typedRef = String(formData.get("confirm_ref") ?? "").trim().toUpperCase();
+
+  if (!masterPasswordOk(String(formData.get("master") ?? ""))) {
+    return { ok: false, error: "That is not the archive password." };
+  }
+  if (!id) return { ok: false, error: "Missing case." };
+
+  const c = await getCase(id);
+  if (!c) return { ok: false, error: "That case no longer exists." };
+
+  if (typedRef !== c.ref.toUpperCase()) {
+    return { ok: false, error: `Type ${c.ref} exactly to confirm you mean this case.` };
+  }
+
+  await deleteCases([id]);
+  await audit("case_deleted", adminUser(), {
+    branch: c.branches?.name_en ?? null,
+    detail: `${c.ref} — ${c.patient_name} — permanently removed`,
+  });
+
+  revalidatePath("/admin/cases");
+  revalidatePath("/admin/dashboard");
+  return { ok: true };
+}
