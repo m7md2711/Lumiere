@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconChart, IconList, IconQr, IconBuilding, IconGear } from "@/components/Icons";
+import { IconChart, IconList, IconQr, IconBuilding, IconGear, IconNote, IconChat } from "@/components/Icons";
 
 const items = [
   { href: "/admin/cases", label: "Cases", Icon: IconList },
+  { href: "/admin/logged", label: "By staff", Icon: IconChat },
+  { href: "/admin/new-case", label: "Raise", Icon: IconNote },
   { href: "/admin/dashboard", label: "Dashboard", Icon: IconChart },
   { href: "/admin/branches", label: "Branches", Icon: IconBuilding },
   { href: "/admin/qr", label: "QR", Icon: IconQr },
@@ -13,17 +15,21 @@ const items = [
 ];
 
 export default function NavLinks({
-  variant, isAdmin,
+  variant, role,
 }: {
   variant: "sidebar" | "tabs";
-  isAdmin: boolean;
+  role: "admin" | "branch" | "call_center";
 }) {
   const path = usePathname();
   const isActive = (href: string) => path === href || path.startsWith(href + "/");
   // Branch staff get their cases and their numbers; the rest is clinic-wide.
-  const visible = isAdmin
-    ? items
-    : items.filter((i) => i.href === "/admin/cases" || i.href === "/admin/dashboard");
+  const allowed: Record<string, string[]> = {
+    admin: items.map((i) => i.href),
+    branch: ["/admin/cases", "/admin/logged", "/admin/new-case", "/admin/dashboard"],
+    // The call centre raises complaints and follows the ones it raised.
+    call_center: ["/admin/logged", "/admin/new-case"],
+  };
+  const visible = items.filter((i) => (allowed[role] ?? allowed.branch).includes(i.href));
 
   if (variant === "tabs") {
     return (

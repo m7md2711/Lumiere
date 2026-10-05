@@ -15,7 +15,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!session) redirect("/admin/login");
 
   const isAdmin = session.role === "admin";
-  const label = isAdmin ? "Feedback" : session.branchName;
+  const role = session.role;
+  const label =
+    session.role === "admin" ? "Feedback"
+    : session.role === "call_center" ? "Call centre"
+    : session.branchName;
 
   async function signOut() {
     "use server";
@@ -38,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <LogoMark size={26} />
             <span className="border-s border-slate-300 ps-2.5 text-xs font-medium text-slate-500">{label}</span>
           </Link>
-          <NavLinks variant="sidebar" isAdmin={isAdmin} />
+          <NavLinks variant="sidebar" role={role} />
           <form action={signOut} className="mt-auto">
             <button className="w-full rounded-xl px-3 py-2.5 text-start text-sm font-medium text-slate-500 hover:bg-slate-50">
               Sign out
@@ -64,7 +68,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       {/* Mobile bottom tabs */}
       <nav className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-slate-100 lg:hidden">
-        <NavLinks variant="tabs" isAdmin={isAdmin} />
+        <NavLinks variant="tabs" role={role} />
       </nav>
     </div>
   );

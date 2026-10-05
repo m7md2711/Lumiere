@@ -1,4 +1,5 @@
 import { currentSession, requireSession, sessionBranchId } from "./auth";
+import { CALLCENTER_CODE } from "./sources";
 import { getCase, listCases, type CaseFilters } from "./cases";
 import type { CaseWithBranch } from "./types";
 
@@ -11,8 +12,12 @@ import type { CaseWithBranch } from "./types";
  * otherwise import it back through lib/users.
  */
 export async function scopedFilters(f: CaseFilters): Promise<CaseFilters> {
-  const branchId = await sessionBranchId();
-  return branchId ? { ...f, branch: branchId } : f;
+  const s = await currentSession();
+  if (!s) return f;
+  // The call centre is not tied to a branch — it sees what it raised.
+  if (s.role === "call_center") return { ...f, source: CALLCENTER_CODE };
+  if (s.role === "branch") return { ...f, branch: s.branchId };
+  return f;
 }
 
 export async function listCasesScoped(f: CaseFilters, limit = 300): Promise<CaseWithBranch[]> {
@@ -23,20 +28,26 @@ export async function listCasesScoped(f: CaseFilters, limit = 300): Promise<Case
 export async function getCaseScoped(id: string): Promise<CaseWithBranch | null> {
   const c = await getCase(id);
   if (!c) return null;
-  const branchId = await sessionBranchId();
-  if (branchId && c.branch_id !== branchId) return null;
+  const s = await currentSession();
+  if (!s) return null;
+  if (s.role === "branch" && c.branch_id !== s.branchId) return null;
+  if (s.role === "call_center" && c.qr_locations?.code !== CALLCENTER_CODE) return null;
   return c;
 }
 
 /** Guard for server actions that mutate a single case. */
 export async function assertCaseInScope(caseId: string): Promise<void> {
-  await requireSession();
-  const branchId = await sessionBranchId();
-  if (!branchId) return;
+  const s = await requireSession();
+  if (s.role === "admin") return;
 
   const c = await getCase(caseId);
-  if (!c || c.branch_id !== branchId) {
+  if (!c) throw new Error("That case no longer exists.");
+
+  if (s.role === "branch" && c.branch_id !== s.branchId) {
     throw new Error("That case belongs to another branch.");
+  }
+  if (s.role === "call_center" && c.qr_locations?.code !== CALLCENTER_CODE) {
+    throw new Error("That case was not raised by the call centre.");
   }
 }
 

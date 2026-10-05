@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createBranchLogins } from "../actions";
+import { createBranchLogins, createCallCentreLogin } from "../actions";
 import type { GeneratedLogin } from "@/lib/users";
 
 type Existing = { branchCode: string; branchName: string; username: string; updatedAt: string };
@@ -23,8 +23,9 @@ export default function BranchLogins({ existing }: { existing: Existing[] }) {
         Branch logins
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-600">
-        Each branch signs in with its own username and sees only its own cases. Staff cannot
-        reach branches, QR codes, settings or archiving.
+        Each branch signs in with its own username and sees only its own cases. The call
+        centre has one login of its own: it can raise a complaint against any branch, and
+        follows the ones it raised. Neither reaches branches, QR codes, settings or archiving.
       </p>
 
       {existing.length ? (
@@ -61,9 +62,27 @@ export default function BranchLogins({ existing }: { existing: Existing[] }) {
           <input type="checkbox" name="reset" className="h-4 w-4 accent-clinic-600" />
           Reset every branch password, not just the missing ones
         </label>
-        <button className="btn btn-primary" disabled={pending}>
-          {pending ? "Creating…" : "Create / reset branch logins"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn btn-primary" disabled={pending}>
+            {pending ? "Creating…" : "Create / reset branch logins"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={pending}
+            onClick={() => {
+              setError(null);
+              setLogins(null);
+              startTransition(async () => {
+                const res = await createCallCentreLogin();
+                if (res.ok) setLogins(res.logins);
+                else setError(res.error);
+              });
+            }}
+          >
+            Create / reset the call-centre login
+          </button>
+        </div>
       </form>
 
       {error ? (

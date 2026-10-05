@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth";
 import { assertCaseInScope } from "@/lib/scope";
 import { validateNewPassword } from "@/lib/password";
-import { addEvent, getCase, slaHoursFor } from "@/lib/cases";
+import { addEvent, createCase, getCase, slaHoursFor } from "@/lib/cases";
 import { statusLabel } from "@/lib/i18n";
 import { formatLongDateTime } from "@/lib/time";
 import {
@@ -16,18 +16,20 @@ import {
   setPending, voiceBytesFor,
 } from "@/lib/archive";
 import { listCases } from "@/lib/cases";
-import { generateBranchLogins, type GeneratedLogin } from "@/lib/users";
+import { generateBranchLogins, generateCallCentreLogin, type GeneratedLogin } from "@/lib/users";
 import { audit } from "@/lib/audit";
 import { getSmtp, saveSmtp, setBranchEmail, writeJson, type SmtpSettings } from "@/lib/settings";
-import { INTAKE_KEY, ensureInternalLocations, type IntakeCodes } from "@/lib/sources";
+import {
+  CALLCENTER_CODE, INTAKE_KEY, MANAGER_CODE, ensureInternalLocations, type IntakeCodes,
+} from "@/lib/sources";
 import { sendMail } from "@/lib/mailer";
 import { getEvidence, setEvidence, uploadEvidence } from "@/lib/evidence";
 import { notifyClosed, notifyReadyForReview } from "@/lib/notify";
 import { currentSession } from "@/lib/auth";
 import {
-  BRANCH_STATUSES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES, STATUSES,
+  BRANCH_STATUSES, CATEGORIES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES, STATUSES,
 } from "@/lib/types";
-import type { Priority, Status } from "@/lib/types";
+import type { Category, Priority, Status } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -713,4 +715,90 @@ export async function deleteOneCase(formData: FormData): Promise<ActionResult> {
   revalidatePath("/admin/cases");
   revalidatePath("/admin/dashboard");
   return { ok: true };
+}
+
+// ------------------------------------------------- log a complaint in-app
+
+export type LoggedResult = { ok: true; ref: string } | { ok: false; error: string };
+
+/**
+ * A complaint raised by staff rather than by the patient. A branch may only
+ * raise one against itself; the call centre and the administrator may pick any
+ * branch. The case then follows the ordinary cycle.
+ */
+export async function logComplaint(formData: FormData): Promise<LoggedResult> {
+  const session = await requireSession();
+
+  const wantedBranch = String(formData.get("branchCode") ?? "").trim().toUpperCase();
+  const category = String(formData.get("category") ?? "");
+  if (!CATEGORIES.includes(category as Category)) {
+    return { ok: false, error: "Choose what the complaint is about." };
+  }
+
+  let branchCode = wantedBranch;
+  let locationCode: string;
+
+  if (session.role === "branch") {
+    // Ignore whatever was posted: a branch raises against itself, full stop.
+    branchCode = session.branchCode;
+    locationCode = MANAGER_CODE;
+  } else if (session.role === "call_center") {
+    locationCode = CALLCENTER_CODE;
+  } else {
+    locationCode = String(formData.get("channel") ?? "") === "cc" ? CALLCENTER_CODE : MANAGER_CODE;
+  }
+
+  if (!branchCode) return { ok: false, error: "Choose the branch this concerns." };
+
+  try {
+    await ensureInternalLocations();
+    const { ref, id } = await createCase({
+      branchCode,
+      locationCode,
+      category: category as Category,
+      description: String(formData.get("description") ?? "").slice(0, 4000),
+      patientName: String(formData.get("patientName") ?? "").slice(0, 120),
+      mobile: String(formData.get("mobile") ?? ""),
+      preferredLang: String(formData.get("preferredLang") ?? "en") === "ar" ? "ar" : "en",
+      contactMethod:
+        String(formData.get("contactMethod") ?? "call") === "whatsapp" ? "whatsapp" : "call",
+      preferredTime: (["morning", "afternoon", "evening"].includes(
+        String(formData.get("preferredTime") ?? "")
+      )
+        ? String(formData.get("preferredTime"))
+        : "morning") as "morning" | "afternoon" | "evening",
+      voice: null,
+    });
+
+    await addEvent(id, "note", `Raised by ${session.username} on the patient's behalf.`);
+    await audit("case_logged", session.username, {
+      branch: session.role === "branch" ? session.branchName : branchCode,
+      detail: `${ref} raised on a patient's behalf`,
+    });
+
+    revalidatePath("/admin/cases");
+    revalidatePath("/admin/logged");
+    revalidatePath("/admin/dashboard");
+    return { ok: true, ref };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "FAILED";
+    const friendly: Record<string, string> = {
+      INVALID_BRANCH: "That branch is not available.",
+      INVALID_MOBILE: "Enter a valid UAE mobile, for example 050 123 4567.",
+      INVALID_NAME: "Enter the patient's name.",
+      EMPTY_DETAILS: "Write down what the patient told you.",
+    };
+    return { ok: false, error: friendly[msg] ?? "Could not save it. Try again." };
+  }
+}
+
+export async function createCallCentreLogin(): Promise<LoginsResult> {
+  await requireAdmin();
+  const { username, password } = await generateCallCentreLogin();
+  await audit("branch_logins", adminUser(), { detail: "Call centre login issued" });
+  revalidatePath("/admin/settings");
+  return {
+    ok: true,
+    logins: [{ branchCode: "CC", branchName: "Call centre", username, password }],
+  };
 }

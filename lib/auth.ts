@@ -3,7 +3,10 @@ import { cookies } from "next/headers";
 import { db } from "./supabase";
 import { hashPassword, passwordVersion, verifyPassword } from "./password";
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, sessionCookieOptions } from "./session";
-import { branchUserVersion, findBranchUser, verifyBranchUser, type BranchUser } from "./users";
+import {
+  branchUserVersion, findBranchUser, getCallCentreUser, staffUserVersion,
+  verifyBranchUser, verifyCallCentreUser, type BranchUser,
+} from "./users";
 
 export { SESSION_COOKIE, sessionCookieOptions };
 
@@ -65,6 +68,7 @@ export async function checkCredentials(user: string, pass: string): Promise<bool
 
 export type Identity =
   | { role: "admin"; username: string; pv: string }
+  | { role: "call_center"; username: string; pv: string }
   | {
       role: "branch"; username: string; pv: string;
       branchId: string; branchCode: string; branchName: string;
@@ -76,6 +80,11 @@ export async function authenticate(user: string, pass: string): Promise<Identity
 
   if (supplied === adminUser() && (await adminPasswordOk(pass))) {
     return { role: "admin", username: adminUser(), pv: await currentPasswordVersion() };
+  }
+
+  const cc = await verifyCallCentreUser(supplied, pass);
+  if (cc) {
+    return { role: "call_center", username: cc.username, pv: staffUserVersion(cc) };
   }
 
   const branchUser: BranchUser | null = await verifyBranchUser(supplied, pass);
@@ -140,6 +149,7 @@ export async function reissueAdminSession(pv: string): Promise<void> {
 
 export type Session =
   | { role: "admin"; username: string }
+  | { role: "call_center"; username: string }
   | { role: "branch"; username: string; branchId: string; branchCode: string; branchName: string };
 
 /**
@@ -158,12 +168,19 @@ export async function currentSession(): Promise<Session | null> {
     return null;
   }
 
-  const role = claims.r === "branch" ? "branch" : "admin";
+  const role =
+    claims.r === "branch" ? "branch" : claims.r === "call_center" ? "call_center" : "admin";
   const username = String(claims.u ?? "");
 
   if (role === "admin") {
     if (claims.pv !== (await currentPasswordVersion())) return null;
     return { role: "admin", username };
+  }
+
+  if (role === "call_center") {
+    const u = await getCallCentreUser();
+    if (!u || claims.pv !== staffUserVersion(u)) return null;
+    return { role: "call_center", username };
   }
 
   const branchCode = String(claims.bc ?? "");
@@ -197,6 +214,12 @@ export async function requireAdmin(): Promise<void> {
 export async function sessionBranchId(): Promise<string | null> {
   const s = await currentSession();
   return s && s.role === "branch" ? s.branchId : null;
+}
+
+/** Anyone who may raise a complaint on a patient's behalf. */
+export async function canLogComplaints(): Promise<boolean> {
+  const s = await currentSession();
+  return s !== null;
 }
 
 export async function isSessionValid(): Promise<boolean> {

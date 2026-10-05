@@ -1,6 +1,7 @@
 import { isAdminSession } from "@/lib/scope";
 import { redirect } from "next/navigation";
 import { getBranches, getLocations } from "@/lib/cases";
+import { INTERNAL_CODES } from "@/lib/sources";
 import BranchCard from "./BranchCard";
 import AddBranch from "./AddBranch";
 
@@ -13,7 +14,10 @@ async function requireAdminPage() {
 
 export default async function BranchesPage() {
   await requireAdminPage();
-  const [branches, locations] = await Promise.all([getBranches(), getLocations()]);
+  const [branches, allLocations] = await Promise.all([getBranches(), getLocations()]);
+  // Branch-manager and call-centre intake are not rooms with a QR on the wall;
+  // they exist only to record how a complaint reached us.
+  const locations = allLocations.filter((l) => !INTERNAL_CODES.includes(l.code as never));
 
   return (
     <div className="space-y-4">

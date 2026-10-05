@@ -149,3 +149,57 @@ export async function removeBranchUser(branchCode: string): Promise<void> {
   delete store[branchCode];
   await writeStore(store);
 }
+
+// ----------------------------------------------------------- call centre
+
+/**
+ * The call centre is one team rather than a branch, so it gets its own login:
+ * it can raise a complaint against any branch, and sees the cases it raised.
+ */
+const CC_KEY = "callcenter_user";
+
+export type StaffUser = { username: string; hash: string; updatedAt: string };
+
+export async function getCallCentreUser(): Promise<StaffUser | null> {
+  const { data } = await db().from("app_settings").select("value").eq("key", CC_KEY).maybeSingle();
+  const raw = (data as { value: string } | null)?.value;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as StaffUser;
+  } catch {
+    return null;
+  }
+}
+
+export async function verifyCallCentreUser(
+  supplied: string,
+  password: string
+): Promise<StaffUser | null> {
+  const u = await getCallCentreUser();
+  if (!u || supplied.trim().toLowerCase() !== u.username) return null;
+  return verifyPassword(password, u.hash) ? u : null;
+}
+
+export function staffUserVersion(u: StaffUser): string {
+  return passwordVersion(u.hash);
+}
+
+/** Returns the plaintext once, for the administrator to hand over. */
+export async function generateCallCentreLogin(): Promise<{ username: string; password: string }> {
+  const username = "callcenter";
+  const template = process.env.BRANCH_PASS_TEMPLATE ?? "";
+  const password = template.includes("{branch}")
+    ? template.replace("{branch}", "CallCenter")
+    : generatePassword("CallCenter");
+
+  const rec: StaffUser = {
+    username,
+    hash: hashPassword(password),
+    updatedAt: new Date().toISOString(),
+  };
+  await db()
+    .from("app_settings")
+    .upsert({ key: CC_KEY, value: JSON.stringify(rec), updated_at: rec.updatedAt });
+
+  return { username, password };
+}

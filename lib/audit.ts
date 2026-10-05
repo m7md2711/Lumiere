@@ -23,7 +23,7 @@ export type AuditAction =
   | "signin" | "signin_failed" | "signout"
   | "export" | "password_change" | "branch_logins"
   | "archive_prepared" | "archive_deleted"
-  | "smtp_settings" | "branch_added" | "intake_codes" | "case_deleted" | "keepalive";
+  | "smtp_settings" | "branch_added" | "intake_codes" | "case_deleted" | "case_logged" | "keepalive";
 
 export type AuditEntry = {
   at: string;
@@ -130,5 +130,6 @@ export const actionLabels: Record<AuditAction, string> = {
   branch_added: "Added a branch",
   intake_codes: "Changed the intake links",
   case_deleted: "Deleted a case",
+  case_logged: "Raised a complaint for a patient",
   keepalive: "Scheduled check",
 };

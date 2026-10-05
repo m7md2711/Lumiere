@@ -3,7 +3,8 @@ import { getBranches } from "@/lib/cases";
 import { categoryLabel } from "@/lib/i18n";
 import { CATEGORIES } from "@/lib/types";
 import { clinicDayStart, clinicMonthStart, formatDayLabel } from "@/lib/time";
-import { sessionBranchId } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { currentSession, sessionBranchId } from "@/lib/auth";
 import { sourceOf, sourceShort, type Source } from "@/lib/sources";
 import { getLocations } from "@/lib/cases";
 import type { Case } from "@/lib/types";
@@ -18,6 +19,10 @@ type Row = Pick<
 >;
 
 export default async function DashboardPage() {
+  // The call centre has no clinic-wide view; it follows what it raised.
+  const s = await currentSession();
+  if (s?.role === "call_center") redirect("/admin/logged");
+
   const scopeBranchId = await sessionBranchId();
 
   let query = db()
