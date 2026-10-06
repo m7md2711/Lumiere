@@ -5,7 +5,7 @@ import { repeatCounts } from "@/lib/cases";
 import { categoryLabel } from "@/lib/i18n";
 import { isOverdue } from "@/lib/types";
 import { sourceOf, sourceShort } from "@/lib/sources";
-import { OverduePill, PriorityPill, StatusPill, shortDate } from "@/components/Pills";
+import { OverduePill, PriorityPill, StatusPill, rowTone, shortDate } from "@/components/Pills";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +72,11 @@ export default async function LoggedPage({
 
       <div className="space-y-3">
         {cases.map((c) => (
-          <Link key={c.id} href={`/admin/cases/${c.id}`} className="card block p-4">
+          <Link
+            key={c.id}
+            href={`/admin/cases/${c.id}`}
+            className={`card block p-4 ${rowTone(c.status)}`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <span className="tabular text-sm text-clinic-700">{c.ref}</span>
               <StatusPill status={c.status} />

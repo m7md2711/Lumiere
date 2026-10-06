@@ -3,7 +3,7 @@ import { getBranches, repeatCounts, type CaseFilters } from "@/lib/cases";
 import { listCasesScoped, isAdminSession } from "@/lib/scope";
 import { categoryLabel, priorityLabel, statusLabel } from "@/lib/i18n";
 import { CATEGORIES, PRIORITIES, STATUSES, isOverdue } from "@/lib/types";
-import { OverduePill, PriorityPill, StatusPill, shortDate } from "@/components/Pills";
+import { OverduePill, PriorityPill, StatusPill, rowTone, shortDate } from "@/components/Pills";
 import { IconMic } from "@/components/Icons";
 import { sourceOf, sourceShort } from "@/lib/sources";
 import Filters from "./Filters";
@@ -82,7 +82,11 @@ export default async function CasesPage({
       {/* Mobile cards */}
       <div className="mt-4 space-y-3 lg:hidden">
         {cases.map((c) => (
-          <Link key={c.id} href={`/admin/cases/${c.id}`} className="card block p-4">
+          <Link
+            key={c.id}
+            href={`/admin/cases/${c.id}`}
+            className={`card block p-4 ${rowTone(c.status)}`}
+          >
             <div className="flex items-start justify-between gap-3">
               <span className="tabular text-sm font-semibold text-clinic-800">{c.ref}</span>
               <StatusPill status={c.status} />
@@ -127,7 +131,7 @@ export default async function CasesPage({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {cases.map((c) => (
-              <tr key={c.id} className="hover:bg-slate-50">
+              <tr key={c.id} className={`hover:bg-slate-100 ${rowTone(c.status)}`}>
                 <td className="px-4 py-3">
                   <Link
                     href={`/admin/cases/${c.id}`}

@@ -7,7 +7,7 @@ import { markOpened } from "../../actions";
 import { getCaseScoped } from "@/lib/scope";
 import { categoryLabel } from "@/lib/i18n";
 import { isOverdue } from "@/lib/types";
-import { OverduePill, PriorityPill, StatusPill, shortDate } from "@/components/Pills";
+import { OverduePill, PriorityPill, StatusPill, isClosed, shortDate } from "@/components/Pills";
 import CaseActions from "./CaseActions";
 import DeleteCase from "./DeleteCase";
 
@@ -37,7 +37,9 @@ export default async function CaseDetail({ params }: { params: { id: string } })
         ← All cases
       </Link>
 
-      <header className="card p-5">
+      <header
+        className={`card p-5 ${isClosed(c.status) ? "border-emerald-900/40" : ""}`}
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="tabular text-lg font-bold text-clinic-800">{c.ref}</h1>
