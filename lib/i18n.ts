@@ -158,6 +158,7 @@ export const statusLabels: Record<string, { en: string; ar: string }> = {
   under_review: { en: "Under review", ar: "قيد المراجعة" },
   solved: { en: "Solved", ar: "تم الحل" },
   escalated: { en: "Escalated", ar: "مصعّدة" },
+  follow_up: { en: "Follow-up due", ar: "بانتظار المتابعة" },
   closed: { en: "Closed", ar: "مغلقة" },
   // retained so historical rows still render a name
   assigned: { en: "Assigned", ar: "محالة" },

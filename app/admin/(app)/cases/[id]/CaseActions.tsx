@@ -36,6 +36,12 @@ export default function CaseActions({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const [nextStatus, setNextStatus] = useState<Status>(status);
+  const [closeMode, setCloseMode] = useState<"permanent" | "follow_up">("permanent");
+
+  const today = new Date(Date.now() + 4 * 3600_000).toISOString().slice(0, 10);
+  // A fortnight is the common case: long enough for a treatment to settle.
+  const defaultFollowUp = new Date(Date.now() + 4 * 3600_000 + 14 * 86_400_000)
+    .toISOString().slice(0, 10);
 
   function run(action: (fd: FormData) => Promise<ActionResult>, form: HTMLFormElement) {
     const fd = new FormData(form);
@@ -244,6 +250,48 @@ export default function CaseActions({
       {tab === "close" ? (
         <form onSubmit={submit(closeCase)} className="space-y-3">
           <input type="hidden" name="id" value={id} />
+
+          <div>
+            <span className="label">How are we finishing this?</span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([
+                { v: "permanent", t: "Close permanently", d: "Nothing further needed." },
+                { v: "follow_up", t: "Close with a follow-up", d: "Check back on a date." },
+              ] as const).map((o) => (
+                <label
+                  key={o.v}
+                  className={[
+                    "cursor-pointer rounded-xl border p-3 transition-colors",
+                    closeMode === o.v
+                      ? "border-clinic-600 bg-clinic-50 ring-1 ring-clinic-300"
+                      : "border-slate-300 bg-slate-200 hover:border-clinic-300",
+                  ].join(" ")}
+                >
+                  <input
+                    type="radio" name="close_mode" value={o.v} className="sr-only"
+                    checked={closeMode === o.v}
+                    onChange={() => setCloseMode(o.v)}
+                  />
+                  <span className="block text-sm text-slate-800">{o.t}</span>
+                  <span className="mt-0.5 block text-xs text-slate-500">{o.d}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {closeMode === "follow_up" ? (
+            <div>
+              <label className="label" htmlFor="follow_up_at">Look at this again on</label>
+              <input
+                id="follow_up_at" name="follow_up_at" type="date" className="field"
+                min={today} defaultValue={defaultFollowUp} required
+              />
+              <p className="mt-1.5 text-xs text-slate-500">
+                On that morning the branch and the administrator are both emailed, and the case
+                appears under Follow-up.
+              </p>
+            </div>
+          ) : null}
           <div>
             <label className="label">Resolution note</label>
             <textarea
@@ -278,7 +326,9 @@ export default function CaseActions({
               ))}
             </select>
           </div>
-          <button className="btn btn-primary" disabled={pending}>Close case</button>
+          <button className="btn btn-primary" disabled={pending}>
+            {closeMode === "follow_up" ? "Close and schedule follow-up" : "Close permanently"}
+          </button>
         </form>
       ) : null}
 

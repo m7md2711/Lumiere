@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconChart, IconList, IconQr, IconBuilding, IconGear, IconNote, IconChat } from "@/components/Icons";
+import { IconChart, IconList, IconQr, IconBuilding, IconGear, IconNote, IconChat, IconCalendar } from "@/components/Icons";
 
 const items = [
   { href: "/admin/cases", label: "Cases", Icon: IconList },
   { href: "/admin/logged", label: "By staff", Icon: IconChat },
+  { href: "/admin/follow-up", label: "Follow-up", Icon: IconCalendar },
   { href: "/admin/new-case", label: "Raise", Icon: IconNote },
   { href: "/admin/dashboard", label: "Dashboard", Icon: IconChart },
   { href: "/admin/branches", label: "Branches", Icon: IconBuilding },
@@ -25,7 +26,7 @@ export default function NavLinks({
   // Branch staff get their cases and their numbers; the rest is clinic-wide.
   const allowed: Record<string, string[]> = {
     admin: items.map((i) => i.href),
-    branch: ["/admin/cases", "/admin/logged", "/admin/new-case", "/admin/dashboard"],
+    branch: ["/admin/cases", "/admin/logged", "/admin/follow-up", "/admin/new-case", "/admin/dashboard"],
     // The call centre raises complaints and follows the ones it raised.
     call_center: ["/admin/logged", "/admin/new-case"],
   };

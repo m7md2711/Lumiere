@@ -9,7 +9,8 @@ export type Priority = "low" | "normal" | "high" | "urgent";
  * resolve something itself.
  */
 export type Status =
-  | "new" | "opened" | "under_review" | "solved" | "escalated" | "closed";
+  | "new" | "opened" | "under_review" | "solved" | "escalated"
+  | "follow_up" | "closed";
 
 export type EventType =
   | "created" | "status" | "note" | "contact" | "escalation"
@@ -22,7 +23,7 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 
 export const STATUSES: Status[] = [
-  "new", "opened", "under_review", "solved", "escalated", "closed",
+  "new", "opened", "under_review", "solved", "escalated", "follow_up", "closed",
 ];
 
 /** What a branch may set. Closing is the administrator's alone. */
@@ -38,11 +39,15 @@ export const PRIORITIES: Priority[] = ["low", "normal", "high", "urgent"];
 
 /** Statuses that may only be set together with an explanatory note. */
 export const NOTE_REQUIRED_STATUSES: Status[] = [
-  "under_review", "solved", "escalated", "closed",
+  "under_review", "solved", "escalated", "follow_up", "closed",
 ];
 
 /** A case stops counting against its SLA once it reaches one of these. */
-export const TERMINAL_STATUSES: Status[] = ["closed"];
+/**
+ * Neither needs anybody today, so neither counts against the response clock.
+ * A case awaiting follow-up comes back on its own date.
+ */
+export const TERMINAL_STATUSES: Status[] = ["closed", "follow_up"];
 
 export type Branch = {
   id: string;

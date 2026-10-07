@@ -18,6 +18,8 @@ import {
 import { listCases } from "@/lib/cases";
 import { generateBranchLogins, generateCallCentreLogin, type GeneratedLogin } from "@/lib/users";
 import { audit } from "@/lib/audit";
+import { clearFollowUp, setFollowUp } from "@/lib/followup";
+import { clinicDayStart } from "@/lib/time";
 import { getSmtp, saveSmtp, setBranchEmail, writeJson, type SmtpSettings } from "@/lib/settings";
 import {
   CALLCENTER_CODE, INTAKE_KEY, MANAGER_CODE, ensureInternalLocations, type IntakeCodes,
@@ -252,17 +254,47 @@ export async function closeCase(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Record the patient's satisfaction from 1 to 5." };
   }
 
+  // Closing has two outcomes: finished, or finished for now with a date to
+  // look again. A follow-up case is off everyone's desk until that morning.
+  const mode = String(formData.get("close_mode") ?? "permanent");
+  const followDate = String(formData.get("follow_up_at") ?? "").trim();
+
+  if (mode === "follow_up") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(followDate)) {
+      return { ok: false, error: "Choose the date to look at this again." };
+    }
+    if (new Date(`${followDate}T00:00:00.000+04:00`).getTime() < clinicDayStart().getTime()) {
+      return { ok: false, error: "Choose today or a date after it." };
+    }
+  }
+
+  const closingNow = mode !== "follow_up";
   const { error } = await db()
     .from("cases")
     .update({
-      status: "closed",
+      status: closingNow ? "closed" : "follow_up",
       resolution_note: note,
       closure_reason: reason,
       satisfaction,
-      closed_at: new Date().toISOString(),
+      closed_at: closingNow ? new Date().toISOString() : null,
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  if (!closingNow) {
+    const rec = await setFollowUp(id, { at: followDate, note, setBy: adminUser() });
+    await addEvent(
+      id,
+      "status",
+      `Follow-up set for ${followDate} (round ${rec.round}). ${note}`
+    );
+    await audit("follow_up_set", adminUser(), { detail: `${followDate} — round ${rec.round}` });
+    refresh(id);
+    revalidatePath("/admin/follow-up");
+    return { ok: true };
+  }
+
+  await clearFollowUp(id);
 
   await addEvent(id, "closed", `Closed (${reason}) · satisfaction ${satisfaction}/5. ${note}`);
   refresh(id);
@@ -801,4 +833,58 @@ export async function createCallCentreLogin(): Promise<LoginsResult> {
     ok: true,
     logins: [{ branchCode: "CC", branchName: "Call centre", username, password }],
   };
+}
+
+
+// ------------------------------------------------------------- follow-ups
+
+/** Push a case out to a new date, from the follow-up view. */
+export async function rescheduleFollowUp(formData: FormData): Promise<ActionResult> {
+  const session = await requireSession();
+  const id = String(formData.get("id") ?? "");
+  await assertCaseInScope(id);
+
+  const at = String(formData.get("follow_up_at") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(at)) return { ok: false, error: "Choose a date." };
+  if (new Date(`${at}T00:00:00.000+04:00`).getTime() < clinicDayStart().getTime()) {
+    return { ok: false, error: "Choose today or a date after it." };
+  }
+  if (!note) return { ok: false, error: "Say what still needs checking." };
+
+  const rec = await setFollowUp(id, { at, note, setBy: session.username });
+  await db().from("cases").update({ status: "follow_up", closed_at: null }).eq("id", id);
+  await addEvent(id, "note", `Follow-up moved to ${at} (round ${rec.round}). ${note}`);
+  await audit("follow_up_set", session.username, { detail: `${at} — round ${rec.round}` });
+
+  refresh(id);
+  revalidatePath("/admin/follow-up");
+  return { ok: true };
+}
+
+/** Nothing further needed — the case is finished for good. */
+export async function closePermanently(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+
+  const id = String(formData.get("id") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  if (!id) return { ok: false, error: "Missing case." };
+  if (!note) return { ok: false, error: "Say what the follow-up found." };
+
+  const { error } = await db()
+    .from("cases")
+    .update({ status: "closed", closed_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  await clearFollowUp(id);
+  await addEvent(id, "closed", `Follow-up complete, closed for good. ${note}`);
+
+  const fresh = await getCase(id);
+  if (fresh) void notifyClosed(fresh, note, Number(fresh.satisfaction ?? 0)).catch(() => {});
+
+  refresh(id);
+  revalidatePath("/admin/follow-up");
+  return { ok: true };
 }

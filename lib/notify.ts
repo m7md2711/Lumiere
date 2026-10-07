@@ -116,3 +116,29 @@ export async function notifyOverdue(cases: CaseWithBranch[]): Promise<void> {
      ${base() ? button(`${base()}/admin/cases?overdue=1`, "See them all") : ""}`
   );
 }
+
+/** The morning a scheduled follow-up comes due. Goes to the branch and the admin. */
+export async function notifyFollowUpDue(
+  items: { c: CaseWithBranch; at: string; note: string; round: number }[]
+): Promise<void> {
+  for (const { c, at, note, round } of items) {
+    const to = await recipientsFor(c.branches?.code ?? null);
+    const all = [...to.branch, ...to.admin];
+    if (all.length === 0) continue;
+
+    await sendMail(
+      all,
+      `Follow-up due today: ${c.ref} — ${c.branches?.name_en ?? "Lumiere"}`,
+      `<p style="margin:0 0 4px;font-size:16px;color:#c9a84c">Time to check back on this</p>
+       <p style="margin:0;color:#a89364;font-size:13px">
+         This case was closed on ${formatLongDateTime(c.created_at)} with a follow-up set for
+         today${round > 1 ? ` — this is follow-up ${round}` : ""}. Contact the patient, then
+         either close it for good or set another date.
+       </p>
+       ${facts(c)}
+       ${note ? `<p style="margin:0 0 10px;padding:12px;background:#101010;border-left:2px solid #8a7340"><b style="color:#c9a84c">What to check:</b> ${esc(note)}</p>` : ""}
+       ${c.resolution_note ? `<p style="margin:0 0 10px;color:#a89364;font-size:12px"><b>Originally resolved:</b> ${esc(c.resolution_note)}</p>` : ""}
+       ${link(c.id)}`
+    );
+  }
+}

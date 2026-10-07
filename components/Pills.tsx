@@ -13,6 +13,7 @@ const statusStyles: Record<string, string> = {
   under_review: "bg-amber-950/70 text-amber-300 ring-amber-900",
   solved: "bg-violet-950/70 text-violet-300 ring-violet-900",
   escalated: "bg-orange-950/70 text-orange-300 ring-orange-900",
+  follow_up: "bg-indigo-950/70 text-indigo-300 ring-indigo-900",
   closed: "bg-emerald-950/80 text-emerald-300 ring-emerald-800",
 
   // Retained so rows written before the workflow changed still read sensibly.
