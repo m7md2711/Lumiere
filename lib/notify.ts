@@ -113,8 +113,46 @@ export async function notifyOverdue(cases: CaseWithBranch[]): Promise<void> {
        These patients wrote in more than 24 hours ago and their branch has not opened the case.
      </p>
      <table style="border-collapse:collapse;margin:14px 0">${rows}</table>
-     ${base() ? button(`${base()}/admin/cases?overdue=1`, "See them all") : ""}`
+     ${base() ? button(`${base()}/admin/cases?overdue=1`, "See them all") : ""}`,
+    to.management
   );
+}
+
+/**
+ * A nudge the administrator sends by hand — "this one has gone quiet". Goes to
+ * the branch and the administrator, with management copied.
+ */
+export async function notifyReminder(
+  c: CaseWithBranch,
+  message: string,
+  from: string
+): Promise<{ ok: boolean; error?: string; to: string[]; cc: string[] }> {
+  const r = await recipientsFor(c.branches?.code ?? null);
+  const to = [...r.branch, ...r.admin];
+  if (to.length === 0) {
+    return { ok: false, error: "No branch or administrator address is set.", to: [], cc: [] };
+  }
+
+  const age = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 86_400_000);
+  const res = await sendMail(
+    to,
+    `Reminder: ${c.ref} — ${c.branches?.name_en ?? "Lumiere"}`,
+    `<p style="margin:0 0 4px;font-size:16px;color:#c9a84c">A reminder about this case</p>
+     <p style="margin:0;color:#a89364;font-size:13px">
+       Sent by ${esc(from)}. The patient wrote in
+       ${age === 0 ? "today" : `${age} day${age === 1 ? "" : "s"} ago`} and the case is
+       ${esc(statusLabel(c.status)).toLowerCase()}.
+     </p>
+     ${facts(c)}
+     ${message ? `<p style="margin:0 0 10px;padding:12px;background:#101010;border-left:2px solid #c9a84c"><b style="color:#c9a84c">Note:</b> ${esc(message)}</p>` : ""}
+     ${c.description ? `<p style="margin:0 0 10px;color:#a89364;font-size:12px"><b>What the patient said:</b> ${esc(c.description)}</p>` : ""}
+     ${link(c.id)}`,
+    r.management
+  );
+
+  return res.ok
+    ? { ok: true, to, cc: r.management }
+    : { ok: false, error: res.error, to, cc: r.management };
 }
 
 /** The morning a scheduled follow-up comes due. Goes to the branch and the admin. */
@@ -138,7 +176,8 @@ export async function notifyFollowUpDue(
        ${facts(c)}
        ${note ? `<p style="margin:0 0 10px;padding:12px;background:#101010;border-left:2px solid #8a7340"><b style="color:#c9a84c">What to check:</b> ${esc(note)}</p>` : ""}
        ${c.resolution_note ? `<p style="margin:0 0 10px;color:#a89364;font-size:12px"><b>Originally resolved:</b> ${esc(c.resolution_note)}</p>` : ""}
-       ${link(c.id)}`
+       ${link(c.id)}`,
+      to.management
     );
   }
 }

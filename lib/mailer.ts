@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { getSmtp, getBranchEmails, type SmtpSettings } from "./settings";
+import { addressList, getSmtp, getBranchEmails, type SmtpSettings } from "./settings";
 
 /**
  * Outbound mail. Every send is best effort: a clinic's notification must never
@@ -21,10 +21,13 @@ function transport(s: SmtpSettings) {
 export async function sendMail(
   to: string[],
   subject: string,
-  html: string
+  html: string,
+  cc: string[] = []
 ): Promise<MailResult> {
   const s = await getSmtp();
   const recipients = to.filter(Boolean);
+  // Never copy someone who is already a direct recipient.
+  const copies = cc.filter((a) => a && !recipients.includes(a));
 
   if (!s.enabled) return { ok: false, error: "Email notifications are switched off." };
   if (!s.host || !s.fromEmail) return { ok: false, error: "SMTP is not configured." };
@@ -34,6 +37,7 @@ export async function sendMail(
     await transport(s).sendMail({
       from: `"${s.fromName}" <${s.fromEmail}>`,
       to: recipients.join(", "),
+      cc: copies.length ? copies.join(", ") : undefined,
       subject,
       html: wrap(html),
     });
@@ -48,12 +52,15 @@ export async function sendMail(
 export async function recipientsFor(branchCode: string | null): Promise<{
   admin: string[];
   branch: string[];
+  management: string[];
 }> {
   const s = await getSmtp();
   const emails = await getBranchEmails();
   return {
-    admin: s.adminEmail ? s.adminEmail.split(",").map((x) => x.trim()).filter(Boolean) : [],
+    admin: addressList(s.adminEmail),
     branch: branchCode && emails[branchCode] ? [emails[branchCode]] : [],
+    // Management watches reminders; they are not copied on routine traffic.
+    management: addressList(s.ccEmails),
   };
 }
 

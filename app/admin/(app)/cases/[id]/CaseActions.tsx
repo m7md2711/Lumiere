@@ -3,13 +3,13 @@
 import { useState, useTransition } from "react";
 import {
   addNote, approveRefund, changePriority, changeStatus, closeCase,
-  escalate, logContact, markRefundProcessed, type ActionResult,
+  escalate, logContact, markRefundProcessed, sendCaseReminder, type ActionResult,
 } from "../../actions";
 import { statusLabel } from "@/lib/i18n";
 import { BRANCH_STATUSES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES, PRIORITIES, STATUSES } from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
-type Tab = "status" | "note" | "contact" | "escalate" | "refund" | "close";
+type Tab = "status" | "note" | "contact" | "escalate" | "refund" | "remind" | "close";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "status", label: "Status" },
@@ -17,6 +17,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "contact", label: "Contact" },
   { id: "escalate", label: "Escalate" },
   { id: "refund", label: "Refund" },
+  { id: "remind", label: "Remind" },
   { id: "close", label: "Close" },
 ];
 
@@ -31,7 +32,7 @@ export default function CaseActions({
   isAdmin: boolean;
   hasEvidence: boolean;
 }) {
-  const visibleTabs = isAdmin ? tabs : tabs.filter((x) => x.id !== "close");
+  const visibleTabs = isAdmin ? tabs : tabs.filter((x) => x.id !== "close" && x.id !== "remind");
   const [tab, setTab] = useState<Tab>("status");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -245,6 +246,43 @@ export default function CaseActions({
             </p>
           ) : null}
         </div>
+      ) : null}
+
+      {tab === "remind" ? (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setMessage(null);
+            const form = e.currentTarget;
+            const fd = new FormData(form);
+            startTransition(async () => {
+              const res = await sendCaseReminder(fd);
+              if (res.ok) {
+                setMessage({ ok: true, text: res.summary });
+                form.reset();
+              } else {
+                setMessage({ ok: false, text: res.error });
+              }
+            });
+          }}
+        >
+          <input type="hidden" name="id" value={id} />
+          <p className="text-sm text-slate-600">
+            Emails the branch and you, copying the management addresses from settings. The
+            case summary is included, so nobody has to open the system to see what it is about.
+          </p>
+          <div>
+            <label className="label" htmlFor="message">Anything to add? (optional)</label>
+            <textarea
+              id="message" name="message" className="field min-h-[80px]"
+              placeholder="Patient called again this morning"
+            />
+          </div>
+          <button className="btn btn-primary" disabled={pending}>
+            {pending ? "Sending…" : "Send reminder"}
+          </button>
+        </form>
       ) : null}
 
       {tab === "close" ? (

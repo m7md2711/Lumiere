@@ -33,6 +33,8 @@ export type SmtpSettings = {
   fromName: string;
   fromEmail: string;
   adminEmail: string;
+  /** Management, copied in on reminders only — not on every case notification. */
+  ccEmails: string;
   enabled: boolean;
 };
 
@@ -47,6 +49,7 @@ export const defaultSmtp: SmtpSettings = {
   fromName: "Lumiere Patient Feedback",
   fromEmail: "",
   adminEmail: "",
+  ccEmails: "",
   enabled: false,
 };
 
@@ -70,6 +73,11 @@ export const BRANCH_EMAIL_KEY = "branch_emails";
 
 /** branch code -> the address that receives that branch's case mail. */
 export type BranchEmails = Record<string, string>;
+
+/** Splits a comma-separated field into addresses, dropping the empties. */
+export function addressList(raw: string): string[] {
+  return raw.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+}
 
 export async function getBranchEmails(): Promise<BranchEmails> {
   return readJson<BranchEmails>(BRANCH_EMAIL_KEY, {});

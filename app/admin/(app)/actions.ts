@@ -26,7 +26,7 @@ import {
 } from "@/lib/sources";
 import { sendMail } from "@/lib/mailer";
 import { getEvidence, setEvidence, uploadEvidence } from "@/lib/evidence";
-import { notifyClosed, notifyReadyForReview } from "@/lib/notify";
+import { notifyClosed, notifyReadyForReview, notifyReminder } from "@/lib/notify";
 import { currentSession } from "@/lib/auth";
 import {
   BRANCH_STATUSES, CATEGORIES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES, STATUSES,
@@ -595,6 +595,7 @@ export async function saveSmtpSettings(formData: FormData): Promise<ActionResult
     fromName: String(formData.get("fromName") ?? "").trim() || "Lumiere Patient Feedback",
     fromEmail: String(formData.get("fromEmail") ?? "").trim(),
     adminEmail: String(formData.get("adminEmail") ?? "").trim(),
+    ccEmails: String(formData.get("ccEmails") ?? "").trim(),
     enabled: formData.get("enabled") === "on",
   };
 
@@ -887,4 +888,41 @@ export async function closePermanently(formData: FormData): Promise<ActionResult
   refresh(id);
   revalidatePath("/admin/follow-up");
   return { ok: true };
+}
+
+// ---------------------------------------------------------- manual reminder
+
+export type ReminderResult =
+  | { ok: true; summary: string }
+  | { ok: false; error: string };
+
+/**
+ * A nudge sent by hand when a case has gone quiet. Administrator only — a
+ * branch chasing itself is not a reminder, and management is copied, so this
+ * is not something to fire off casually.
+ */
+export async function sendCaseReminder(formData: FormData): Promise<ReminderResult> {
+  await requireAdmin();
+
+  const id = String(formData.get("id") ?? "");
+  const message = String(formData.get("message") ?? "").trim().slice(0, 1000);
+  if (!id) return { ok: false, error: "Missing case." };
+
+  const c = await getCase(id);
+  if (!c) return { ok: false, error: "That case no longer exists." };
+
+  const res = await notifyReminder(c, message, adminUser());
+  if (!res.ok) return { ok: false, error: res.error ?? "Could not send the reminder." };
+
+  await addEvent(id, "note", `Reminder emailed by ${adminUser()}.${message ? ` ${message}` : ""}`);
+  await audit("reminder_sent", adminUser(), {
+    branch: c.branches?.name_en ?? null,
+    detail: `${c.ref} — ${res.to.length} recipient${res.to.length === 1 ? "" : "s"}${
+      res.cc.length ? `, ${res.cc.length} copied` : ""
+    }`,
+  });
+
+  refresh(id);
+  const ccNote = res.cc.length ? `, copying ${res.cc.length} management address${res.cc.length === 1 ? "" : "es"}` : "";
+  return { ok: true, summary: `Reminder sent to ${res.to.join(", ")}${ccNote}.` };
 }

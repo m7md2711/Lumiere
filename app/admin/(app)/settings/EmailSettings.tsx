@@ -6,7 +6,7 @@ import { saveSmtpSettings, sendTestEmail, saveBranchEmail } from "../actions";
 type Props = {
   smtp: {
     host: string; port: number; secure: boolean; user: string;
-    fromName: string; fromEmail: string; adminEmail: string;
+    fromName: string; fromEmail: string; adminEmail: string; ccEmails: string;
     enabled: boolean; hasPassword: boolean;
   };
   branches: { code: string; name: string; email: string }[];
@@ -78,10 +78,21 @@ export default function EmailSettings({ smtp, branches }: Props) {
           </div>
         </div>
 
-        <div>
-          <label className="label" htmlFor="adminEmail">Administrator address</label>
-          <input id="adminEmail" name="adminEmail" className="field" defaultValue={smtp.adminEmail}
-                 placeholder="you@clinic.ae — separate several with commas" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="adminEmail">Administrator address</label>
+            <input id="adminEmail" name="adminEmail" className="field" defaultValue={smtp.adminEmail}
+                   placeholder="you@clinic.ae — separate several with commas" />
+            <p className="mt-1.5 text-xs text-slate-500">Receives everything, as a direct recipient.</p>
+          </div>
+          <div>
+            <label className="label" htmlFor="ccEmails">Management, copied on reminders</label>
+            <input id="ccEmails" name="ccEmails" className="field" defaultValue={smtp.ccEmails}
+                   placeholder="md@clinic.ae, ops@clinic.ae" />
+            <p className="mt-1.5 text-xs text-slate-500">
+              In CC on reminders, overdue reports and follow-ups — not on routine case traffic.
+            </p>
+          </div>
         </div>
 
         <button className="btn btn-primary" disabled={pending}>
