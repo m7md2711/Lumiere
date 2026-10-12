@@ -11,6 +11,7 @@ import { INTAKE_KEY, defaultIntakeCodes, type IntakeCodes } from "@/lib/sources"
 import ChangePasswordForm from "./ChangePasswordForm";
 import BranchLogins from "./BranchLogins";
 import ActivityLog from "./ActivityLog";
+import Maintenance from "./Maintenance";
 import EmailSettings from "./EmailSettings";
 import IntakeLinks from "./IntakeLinks";
 import { StorageMeter } from "./StorageMeter";
@@ -37,6 +38,11 @@ export default async function SettingsPage() {
     getSmtp(), getBranchEmails(), getBranches(),
   ]);
   const intake = await readJson<IntakeCodes>(INTAKE_KEY, defaultIntakeCodes);
+
+  const { count: legacyCount } = await db()
+    .from("cases")
+    .select("id", { count: "exact", head: true })
+    .in("category", ["treatment", "medical"]);
 
   const changedAt = (data as { updated_at: string } | null)?.updated_at ?? null;
 
@@ -76,6 +82,8 @@ export default async function SettingsPage() {
           code: b.code, name: b.name_en, email: branchEmails[b.code] ?? "",
         }))}
       />
+
+      <Maintenance legacyCount={legacyCount ?? 0} />
 
       <ActivityLog />
 
