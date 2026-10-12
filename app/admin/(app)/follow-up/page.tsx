@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { currentSession } from "@/lib/auth";
 import { listCasesScoped } from "@/lib/scope";
 import { followUpsFor, dueLabel } from "@/lib/followup";
@@ -61,9 +61,9 @@ export default async function FollowUpPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <Link href={`/admin/cases/${c.id}`} className="tabular text-sm text-clinic-700 hover:underline">
+                  <AppLink href={`/admin/cases/${c.id}`} className="tabular text-sm text-clinic-700 hover:underline">
                     {c.ref}
-                  </Link>
+                  </AppLink>
                   <div className="mt-1 text-sm text-slate-800">{c.patient_name}</div>
                   <div className="text-xs text-slate-500">
                     {categoryLabel(c.category, "en")} · {c.branches?.name_en ?? "—"}

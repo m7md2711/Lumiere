@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { getBranches, repeatCounts, type CaseFilters } from "@/lib/cases";
 import { listCasesScoped, isAdminSession } from "@/lib/scope";
 import { categoryLabel, priorityLabel, statusLabel } from "@/lib/i18n";
@@ -82,7 +82,7 @@ export default async function CasesPage({
       {/* Mobile cards */}
       <div className="mt-4 space-y-3 lg:hidden">
         {cases.map((c) => (
-          <Link
+          <AppLink
             key={c.id}
             href={`/admin/cases/${c.id}`}
             className={`card block p-4 ${rowTone(c.status)}`}
@@ -113,7 +113,7 @@ export default async function CasesPage({
               ) : null}
               <span className="ms-auto text-xs text-slate-400">{shortDate(c.created_at)}</span>
             </div>
-          </Link>
+          </AppLink>
         ))}
       </div>
 
@@ -133,12 +133,12 @@ export default async function CasesPage({
             {cases.map((c) => (
               <tr key={c.id} className={`hover:bg-slate-100 ${rowTone(c.status)}`}>
                 <td className="px-4 py-3">
-                  <Link
+                  <AppLink
                     href={`/admin/cases/${c.id}`}
                     className="tabular font-semibold text-clinic-700 hover:underline"
                   >
                     {c.ref}
-                  </Link>
+                  </AppLink>
                   {isOverdue(c) ? <div className="mt-1"><OverduePill /></div> : null}
                 </td>
                 <td className="px-4 py-3">

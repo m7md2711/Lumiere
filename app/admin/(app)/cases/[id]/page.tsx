@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { notFound } from "next/navigation";
 import { getEvents, repeatCountFor, toWhatsApp } from "@/lib/cases";
 import { getEvidence, signedUrlFor } from "@/lib/evidence";
@@ -37,9 +37,9 @@ export default async function CaseDetail({ params }: { params: { id: string } })
 
   return (
     <div className="space-y-4">
-      <Link href="/admin/cases" className="text-sm font-medium text-clinic-700 hover:underline">
+      <AppLink href="/admin/cases" className="text-sm font-medium text-clinic-700 hover:underline">
         ← All cases
-      </Link>
+      </AppLink>
 
       <header
         className={`card p-5 ${isClosed(c.status) ? "border-[rgb(var(--ok-ring))]" : ""}`}

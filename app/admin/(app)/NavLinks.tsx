@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { usePathname } from "next/navigation";
 import { IconChart, IconList, IconQr, IconBuilding, IconGear, IconNote, IconChat, IconCalendar } from "@/components/Icons";
 
@@ -39,7 +39,7 @@ export default function NavLinks({
         style={{ gridTemplateColumns: `repeat(${visible.length}, minmax(0,1fr))` }}
       >
         {visible.map((it) => (
-          <Link
+          <AppLink
             key={it.href}
             href={it.href}
             className={[
@@ -49,7 +49,7 @@ export default function NavLinks({
           >
             <it.Icon className="h-[22px] w-[22px]" />
             {it.label}
-          </Link>
+          </AppLink>
         ))}
       </div>
     );
@@ -58,7 +58,7 @@ export default function NavLinks({
   return (
     <div className="space-y-1">
       {visible.map((it) => (
-        <Link
+        <AppLink
           key={it.href}
           href={it.href}
           className={[
@@ -70,7 +70,7 @@ export default function NavLinks({
         >
           <it.Icon className="h-[18px] w-[18px]" />
           {it.label}
-        </Link>
+        </AppLink>
       ))}
     </div>
   );

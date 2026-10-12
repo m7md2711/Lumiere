@@ -279,3 +279,13 @@
     transform: none !important;
   }
 }
+
+@layer components {
+  /* A row that has been tapped and is waiting on its page. */
+  .is-navigating {
+    @apply opacity-70;
+    cursor: progress;
+  }
+  .is-navigating .ref,
+  .is-navigating .tabular { @apply text-clinic-600; }
+}

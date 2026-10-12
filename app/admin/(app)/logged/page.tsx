@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { currentSession } from "@/lib/auth";
 import { listCasesScoped } from "@/lib/scope";
 import { repeatCounts } from "@/lib/cases";
@@ -72,7 +73,7 @@ export default async function LoggedPage({
 
       <div className="space-y-3">
         {cases.map((c) => (
-          <Link
+          <AppLink
             key={c.id}
             href={`/admin/cases/${c.id}`}
             className={`card block p-4 ${rowTone(c.status)}`}
@@ -98,7 +99,7 @@ export default async function LoggedPage({
               ) : null}
               <span className="ms-auto text-xs text-slate-400">{shortDate(c.created_at)}</span>
             </div>
-          </Link>
+          </AppLink>
         ))}
       </div>
     </div>

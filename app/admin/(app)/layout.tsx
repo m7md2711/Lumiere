@@ -6,6 +6,7 @@ import { SESSION_COOKIE, currentSession, sessionCookieOptions } from "@/lib/auth
 import { audit } from "@/lib/audit";
 import NavLinks from "./NavLinks";
 import ThemeToggle from "@/components/ThemeToggle";
+import NavProgress from "@/components/NavProgress";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
+      <NavProgress />
       {/* Desktop sidebar */}
       <aside className="no-print hidden w-60 shrink-0 border-e border-slate-200 bg-slate-100 lg:block">
         <div className="sticky top-0 flex h-screen flex-col p-4">
