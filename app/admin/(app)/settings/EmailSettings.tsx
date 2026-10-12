@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import { saveSmtpSettings, sendTestEmail, saveBranchEmail } from "../actions";
 
 type Props = {
@@ -95,7 +96,7 @@ export default function EmailSettings({ smtp, branches }: Props) {
           </div>
         </div>
 
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="btn btn-primary" disabled={pending} aria-busy={pending}>
           {pending ? "Saving…" : "Save email settings"}
         </button>
       </form>
@@ -104,7 +105,7 @@ export default function EmailSettings({ smtp, branches }: Props) {
         <label className="label" htmlFor="to">Send a test to</label>
         <div className="flex gap-2">
           <input id="to" name="to" type="email" className="field" placeholder="someone@clinic.ae" />
-          <button className="btn btn-ghost shrink-0" disabled={pending}>Send test</button>
+          <button className="btn btn-ghost shrink-0" disabled={pending} aria-busy={pending}>Send test</button>
         </div>
       </form>
 
@@ -125,7 +126,7 @@ export default function EmailSettings({ smtp, branches }: Props) {
               </div>
               <input name="email" type="email" className="field py-2 text-sm"
                      defaultValue={b.email} placeholder="branch@clinic.ae" />
-              <button className="btn btn-ghost py-2 text-xs" disabled={pending}>Save</button>
+              <button className="btn btn-ghost py-2 text-xs" disabled={pending} aria-busy={pending}>Save</button>
             </form>
           ))}
         </div>
@@ -133,8 +134,8 @@ export default function EmailSettings({ smtp, branches }: Props) {
 
       {msg ? (
         <p role="status" className={`mt-4 rounded-xl px-4 py-3 text-sm ring-1 ${
-          msg.ok ? "bg-emerald-950/60 text-emerald-300 ring-emerald-900"
-                 : "bg-rose-950/60 text-rose-300 ring-rose-900"}`}>
+          msg.ok ? "tint t-ok"
+                 : "tint t-crit"}`}>
           {msg.text}
         </p>
       ) : null}

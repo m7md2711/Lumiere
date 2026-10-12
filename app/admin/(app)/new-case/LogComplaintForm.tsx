@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import Link from "next/link";
 import { logComplaint } from "../actions";
 import { categoryLabel } from "@/lib/i18n";
@@ -171,7 +172,7 @@ export default function LogComplaintForm({ role, fixedBranch, branches }: Props)
 
         {error ? <p role="alert" className="alert-error">{error}</p> : null}
 
-        <button className="btn btn-primary btn-lg" disabled={pending}>
+        <button className="btn btn-primary btn-lg" disabled={pending} aria-busy={pending}>
           {pending ? "Saving…" : "Raise this complaint"}
         </button>
       </form>

@@ -134,8 +134,10 @@ export function t(lang: Lang): T {
 export const categoryLabels: Record<string, { en: string; ar: string }> = {
   appointment: { en: "Appointment or waiting time", ar: "المواعيد أو وقت الانتظار" },
   staff: { en: "Communication or staff interaction", ar: "التواصل أو التعامل من فريق العمل" },
-  treatment: { en: "Treatment or service experience", ar: "تجربة العلاج أو الخدمة" },
-  medical: { en: "Medical concern after a service", ar: "ملاحظة طبية بعد الخدمة" },
+  concern: { en: "Concern after service", ar: "ملاحظة بعد الخدمة" },
+  // Retained so cases filed before the two topics merged still read.
+  treatment: { en: "Concern after service", ar: "ملاحظة بعد الخدمة" },
+  medical: { en: "Concern after service", ar: "ملاحظة بعد الخدمة" },
   payment: { en: "Price, payment or package", ar: "السعر أو الدفع أو الباقة" },
   facility: { en: "Facility, comfort or privacy", ar: "المرافق أو الراحة أو الخصوصية" },
   suggestion: { en: "Suggestion for improvement", ar: "اقتراح للتحسين" },

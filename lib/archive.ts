@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import { deleteEvidenceFor } from "./evidence";
+import { deleteServiceDetailFor, serviceDetailsFor } from "./service-detail";
 import { db, VOICE_BUCKET } from "./supabase";
 import { casesToCsv } from "./cases";
 import { formatForCsv } from "./time";
@@ -130,7 +131,7 @@ export async function buildZip(rows: CaseWithBranch[]): Promise<ZipResult> {
   const sb = db();
   const zip = new JSZip();
 
-  zip.file("cases.csv", casesToCsv(rows));
+  zip.file("cases.csv", casesToCsv(rows, await serviceDetailsFor(rows.map((r) => r.id))));
 
   const audio = zip.folder("voice-notes");
   let voiceIncluded = 0;

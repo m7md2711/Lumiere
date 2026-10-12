@@ -138,8 +138,8 @@ export default function ArchivePanel({
           role="status"
           className={`mt-4 rounded-xl px-4 py-3 text-sm ring-1 ${
             message.ok
-              ? "bg-emerald-950/60 text-emerald-300 ring-emerald-900"
-              : "bg-rose-950/60 text-rose-300 ring-rose-900"
+              ? "tint t-ok"
+              : "tint t-crit"
           }`}
         >
           {message.text}

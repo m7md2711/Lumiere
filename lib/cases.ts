@@ -5,7 +5,7 @@ import { normalizeMobile, toWhatsApp } from "./phone";
 
 export { normalizeMobile, toWhatsApp };
 import { notifyNewCase } from "./notify";
-import { FIRST_RESPONSE_HOURS } from "./types";
+import { FIRST_RESPONSE_HOURS, SERVICE_CONCERN, normalizeCategory } from "./types";
 import type {
   Branch, Case, CaseEvent, CaseWithBranch, Category, ContactMethod,
   EventType, Lang, PreferredTime, Priority, QrLocation, Status,
@@ -18,7 +18,8 @@ export function slaHoursFor(priority: Priority): number {
 
 /** A medical concern is never routine — it opens at high priority. */
 export function priorityForCategory(category: Category): Priority {
-  return category === "medical" ? "high" : "normal";
+  // A concern raised after a service is never routine.
+  return category === SERVICE_CONCERN ? "high" : "normal";
 }
 
 // ------------------------------------------------------------- reads
@@ -251,12 +252,16 @@ export async function createCase(input: NewCaseInput): Promise<{ ref: string; id
 
 // ------------------------------------------------------------- csv
 
-export function casesToCsv(rows: CaseWithBranch[]): string {
+export function casesToCsv(
+  rows: CaseWithBranch[],
+  service: Record<string, { employee: string; device: string }> = {}
+): string {
   const head = [
     "Reference", "Created (GST)", "Branch", "Location", "Category", "Priority", "Status",
     "Assigned to", "SLA due (GST)", "Overdue", "Patient", "Mobile", "Language", "Contact method",
     "Preferred time", "Description", "Voice note", "Resolution note", "Closure reason",
     "Refund amount", "Refund status", "Satisfaction", "Closed at (GST)",
+    "Employee", "Machine",
   ];
   const now = Date.now();
 
@@ -274,10 +279,34 @@ export function casesToCsv(rows: CaseWithBranch[]): string {
       c.patient_name, c.mobile, c.preferred_lang, c.contact_method, c.preferred_time,
       c.description ?? "", c.voice_url ?? "", c.resolution_note ?? "", c.closure_reason ?? "",
       c.refund_amount ?? "", c.refund_status ?? "", c.satisfaction ?? "", formatForCsv(c.closed_at),
+      service[c.id]?.employee ?? "", service[c.id]?.device ?? "",
     ].map(esc).join(",")
   );
 
-  return "﻿" + [head.join(","), ...lines].join("\r\n");
+  // An analysis block after the rows: whoever opens this in Excel gets the
+  // ranking without having to build a pivot table.
+  const concerns = rows.filter((c) => normalizeCategory(c.category) === SERVICE_CONCERN);
+  const rank = (pick: (id: string) => string) => {
+    const counts = new Map<string, number>();
+    for (const c of concerns) {
+      const name = (pick(c.id) || "").trim() || "Not recorded";
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([name, n]) => [name, n, `${Math.round((n / (concerns.length || 1)) * 100)}%`]);
+  };
+
+  const analysis: string[] = [];
+  if (concerns.length > 0) {
+    analysis.push("", `CONCERNS AFTER SERVICE,${concerns.length}`, "");
+    analysis.push("BY MACHINE,Cases,Share");
+    for (const r of rank((id) => service[id]?.device ?? "")) analysis.push(r.map(esc).join(","));
+    analysis.push("", "BY EMPLOYEE,Cases,Share");
+    for (const r of rank((id) => service[id]?.employee ?? "")) analysis.push(r.map(esc).join(","));
+  }
+
+  return "﻿" + [head.join(","), ...lines, ...analysis].join("\r\n");
 }
 
 export type { Case };

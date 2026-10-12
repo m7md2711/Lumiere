@@ -26,10 +26,12 @@ import {
 } from "@/lib/sources";
 import { sendMail } from "@/lib/mailer";
 import { getEvidence, setEvidence, uploadEvidence } from "@/lib/evidence";
+import { setServiceDetail } from "@/lib/service-detail";
 import { notifyClosed, notifyReadyForReview, notifyReminder } from "@/lib/notify";
 import { currentSession } from "@/lib/auth";
 import {
-  BRANCH_STATUSES, CATEGORIES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES, STATUSES,
+  BRANCH_STATUSES, CATEGORIES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES,
+  SERVICE_CONCERN, STATUSES, normalizeCategory,
 } from "@/lib/types";
 import type { Category, Priority, Status } from "@/lib/types";
 
@@ -92,6 +94,16 @@ export async function changeStatus(formData: FormData): Promise<ActionResult> {
       by: session?.username ?? "unknown",
     });
     await addEvent(id, "evidence", `Signed complaint form attached: ${up.name}`);
+  }
+
+  // A concern raised after a service asks who performed it and on what, so the
+  // same technician or machine showing up repeatedly becomes visible.
+  if (normalizeCategory(existing.category) === SERVICE_CONCERN) {
+    await setServiceDetail(id, {
+      employee: String(formData.get("employee") ?? "").trim().slice(0, 120),
+      device: String(formData.get("device") ?? "").trim().slice(0, 120),
+      recordedBy: session?.username ?? "unknown",
+    });
   }
 
   if (status === "closed") {
@@ -266,6 +278,15 @@ export async function closeCase(formData: FormData): Promise<ActionResult> {
     if (new Date(`${followDate}T00:00:00.000+04:00`).getTime() < clinicDayStart().getTime()) {
       return { ok: false, error: "Choose today or a date after it." };
     }
+  }
+
+  const existingCase = await getCase(id);
+  if (existingCase && normalizeCategory(existingCase.category) === SERVICE_CONCERN) {
+    await setServiceDetail(id, {
+      employee: String(formData.get("employee") ?? "").trim().slice(0, 120),
+      device: String(formData.get("device") ?? "").trim().slice(0, 120),
+      recordedBy: adminUser(),
+    });
   }
 
   const closingNow = mode !== "follow_up";
@@ -925,4 +946,27 @@ export async function sendCaseReminder(formData: FormData): Promise<ReminderResu
   refresh(id);
   const ccNote = res.cc.length ? `, copying ${res.cc.length} management address${res.cc.length === 1 ? "" : "es"}` : "";
   return { ok: true, summary: `Reminder sent to ${res.to.join(", ")}${ccNote}.` };
+}
+
+// --------------------------------------------------- one-off data migration
+
+/**
+ * Folds the two old service topics into the single "Concern after service".
+ * Idempotent, so running it twice changes nothing the second time.
+ */
+export async function mergeServiceCategories(): Promise<ActionResult> {
+  await requireAdmin();
+
+  const { data, error } = await db()
+    .from("cases")
+    .update({ category: "concern" })
+    .in("category", ["treatment", "medical"])
+    .select("id");
+  if (error) return { ok: false, error: error.message };
+
+  const n = (data ?? []).length;
+  await audit("category_merge", adminUser(), { detail: `${n} case${n === 1 ? "" : "s"} moved` });
+  revalidatePath("/admin/cases");
+  revalidatePath("/admin/dashboard");
+  return { ok: true };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import { createBranch } from "../actions";
 
 export default function AddBranch() {
@@ -46,7 +47,7 @@ export default function AddBranch() {
                  maxLength={8} required />
           <input name="name_en" className="field py-2 text-sm" placeholder="Branch name" required />
           <input name="name_ar" className="field py-2 text-sm" dir="rtl" placeholder="اسم الفرع" required />
-          <button className="btn btn-primary py-2 text-xs" disabled={pending}>
+          <button className="btn btn-primary py-2 text-xs" disabled={pending} aria-busy={pending}>
             {pending ? "Adding…" : "Add"}
           </button>
         </form>
@@ -54,8 +55,8 @@ export default function AddBranch() {
 
       {msg ? (
         <p role="status" className={`mt-4 rounded-xl px-4 py-3 text-sm ring-1 ${
-          msg.ok ? "bg-emerald-950/60 text-emerald-300 ring-emerald-900"
-                 : "bg-rose-950/60 text-rose-300 ring-rose-900"}`}>
+          msg.ok ? "tint t-ok"
+                 : "tint t-crit"}`}>
           {msg.text}
         </p>
       ) : null}

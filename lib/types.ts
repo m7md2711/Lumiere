@@ -17,9 +17,26 @@ export type EventType =
   | "refund" | "evidence" | "closed";
 
 export const CATEGORIES = [
-  "appointment", "staff", "treatment", "medical",
+  "appointment", "staff", "concern",
   "payment", "facility", "suggestion", "appreciation", "other",
 ] as const;
+
+/**
+ * "Treatment or service experience" and "Medical concern after a service" were
+ * two ways of saying the same thing, and staff had to guess which. They are now
+ * one topic; the old values map onto it so historical cases still read.
+ */
+export const LEGACY_CATEGORY_MAP: Record<string, Category> = {
+  treatment: "concern",
+  medical: "concern",
+};
+
+export function normalizeCategory(c: string): Category {
+  return (LEGACY_CATEGORY_MAP[c] ?? c) as Category;
+}
+
+/** The one topic that asks who and what was involved. */
+export const SERVICE_CONCERN: Category = "concern";
 export type Category = (typeof CATEGORIES)[number];
 
 export const STATUSES: Status[] = [

@@ -32,8 +32,7 @@ export const IconMic = (p: P) => box(<><rect x="9" y="3" width="6" height="11" r
 export const categoryIconMap: Record<string, (p: P) => React.ReactElement> = {
   appointment: IconCalendar,
   staff: IconChat,
-  treatment: IconSparkle,
-  medical: IconStethoscope,
+  concern: IconStethoscope,
   payment: IconReceipt,
   facility: IconBuilding,
   suggestion: IconBulb,

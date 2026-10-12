@@ -5,6 +5,7 @@ import { LogoMark } from "@/components/Logo";
 import { SESSION_COOKIE, currentSession, sessionCookieOptions } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import NavLinks from "./NavLinks";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="border-s border-slate-300 ps-2.5 text-xs font-medium text-slate-500">{label}</span>
           </Link>
           <NavLinks variant="sidebar" role={role} />
-          <form action={signOut} className="mt-auto">
+          <div className="mt-auto pt-4"><ThemeToggle /></div>
+          <form action={signOut}>
             <button className="w-full rounded-xl px-3 py-2.5 text-start text-sm font-medium text-slate-500 hover:bg-slate-50">
               Sign out
             </button>
@@ -58,9 +60,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <LogoMark size={22} />
             <span className="border-s border-slate-300 ps-2.5 text-xs font-medium text-slate-500">{label}</span>
           </Link>
-          <form action={signOut}>
-            <button className="text-sm font-medium text-slate-500">Sign out</button>
-          </form>
+          <div className="flex items-center gap-3">
+            <ThemeToggle compact />
+            <form action={signOut}>
+              <button className="text-sm text-slate-500 hover:text-slate-800">Sign out</button>
+            </form>
+          </div>
         </header>
 
         <main className="mx-auto max-w-6xl px-4 py-5 lg:px-8 lg:py-8">{children}</main>

@@ -3,13 +3,13 @@ import { formatLongDateTime } from "@/lib/time";
 
 const tone: Record<string, string> = {
   signin: "text-clinic-700",
-  signin_failed: "text-rose-300",
+  signin_failed: "text-[rgb(var(--crit-fg))]",
   signout: "text-slate-500",
-  export: "text-sky-300",
-  password_change: "text-amber-300",
-  branch_logins: "text-amber-300",
+  export: "text-[rgb(var(--info-fg))]",
+  password_change: "text-[rgb(var(--warn-fg))]",
+  branch_logins: "text-[rgb(var(--warn-fg))]",
   archive_prepared: "text-slate-600",
-  archive_deleted: "text-rose-300",
+  archive_deleted: "text-[rgb(var(--crit-fg))]",
   keepalive: "text-slate-400",
 };
 
@@ -24,7 +24,7 @@ export default async function ActivityLog() {
         Sign-ins, exports and deletions across the group. Kept for{" "}
         {RETENTION_DAYS} days, then removed automatically.
         {failures > 0 ? (
-          <span className="text-rose-300">
+          <span className="text-[rgb(var(--crit-fg))]">
             {" "}
             {failures} failed sign-in{failures === 1 ? "" : "s"} in that window.
           </span>

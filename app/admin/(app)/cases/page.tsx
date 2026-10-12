@@ -99,12 +99,12 @@ export default async function CasesPage({
               <PriorityPill priority={c.priority} />
               {isOverdue(c) ? <OverduePill /> : null}
               {repeatOf(c.mobile) > 1 ? (
-                <span className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-amber-300 ring-1 ring-amber-900">
+                <span className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-[rgb(var(--warn-fg))] ring-1 ring-amber-900">
                   {repeatOf(c.mobile)}× patient
                 </span>
               ) : null}
               {sourceOf(c.qr_locations?.code) !== "patient" ? (
-                <span className="inline-flex rounded-full bg-clinic-50 px-2.5 py-1 text-xs text-clinic-700 ring-1 ring-clinic-300">
+                <span className="inline-flex rounded-full tint t-gold px-2.5 py-1 text-xs">
                   {sourceShort[sourceOf(c.qr_locations?.code)]}
                 </span>
               ) : null}
@@ -146,7 +146,7 @@ export default async function CasesPage({
                   <div className="tabular text-xs text-slate-500">
                     {c.mobile}
                     {repeatOf(c.mobile) > 1 ? (
-                      <span className="ms-2 text-amber-300" title="Has contacted us before">
+                      <span className="ms-2 text-[rgb(var(--warn-fg))]" title="Has contacted us before">
                         {repeatOf(c.mobile)}× patient
                       </span>
                     ) : null}

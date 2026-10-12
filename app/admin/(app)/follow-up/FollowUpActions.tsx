@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import { closePermanently, rescheduleFollowUp } from "../actions";
 import { toWhatsApp } from "@/lib/phone";
 
@@ -62,7 +63,7 @@ export default function FollowUpActions({
             <input name="note" className="field py-2 text-sm" required
                    placeholder="What still needs checking?" />
           </div>
-          <button className="btn btn-primary py-2 text-xs" disabled={pending}>
+          <button className="btn btn-primary py-2 text-xs" disabled={pending} aria-busy={pending}>
             {pending ? "Saving…" : "Move the follow-up"}
           </button>
         </form>
@@ -73,7 +74,7 @@ export default function FollowUpActions({
           <input type="hidden" name="id" value={id} />
           <input name="note" className="field py-2 text-sm" required
                  placeholder="What did the follow-up find?" />
-          <button className="btn btn-primary py-2 text-xs" disabled={pending}>
+          <button className="btn btn-primary py-2 text-xs" disabled={pending} aria-busy={pending}>
             {pending ? "Closing…" : "Close for good"}
           </button>
         </form>

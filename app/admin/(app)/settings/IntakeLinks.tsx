@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import { saveIntakeCodes } from "../actions";
 
 type Props = { base: string; codes: { branch: string; callcenter: string } };
@@ -58,7 +59,7 @@ export default function IntakeLinks({ base, codes }: Props) {
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="text-sm text-slate-800">{r.label}</h3>
               {!r.code ? (
-                <span className="text-xs text-amber-300">Unguarded — anyone with the link can log cases</span>
+                <span className="text-xs text-[rgb(var(--warn-fg))]">Unguarded — anyone with the link can log cases</span>
               ) : null}
             </div>
             <p className="mt-1 text-xs text-slate-500">{r.hint}</p>
@@ -85,15 +86,15 @@ export default function IntakeLinks({ base, codes }: Props) {
           </div>
         ))}
 
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="btn btn-primary" disabled={pending} aria-busy={pending}>
           {pending ? "Saving…" : "Save intake links"}
         </button>
       </form>
 
       {msg ? (
         <p role="status" className={`mt-4 rounded-xl px-4 py-3 text-sm ring-1 ${
-          msg.ok ? "bg-emerald-950/60 text-emerald-300 ring-emerald-900"
-                 : "bg-rose-950/60 text-rose-300 ring-rose-900"}`}>
+          msg.ok ? "tint t-ok"
+                 : "tint t-crit"}`}>
           {msg.text}
         </p>
       ) : null}

@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { LogoMark } from "@/components/Logo";
+import { SubmitButton } from "@/components/SubmitButton";
+import ThemeToggle from "@/components/ThemeToggle";
 import { authenticate, issueSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 
@@ -39,6 +41,8 @@ export default function LoginPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6 py-12">
+      <div className="flex justify-center"><ThemeToggle /></div>
+
       <div className="flex flex-col items-center gap-3 text-center">
         <LogoMark size={46} />
         <div>
@@ -71,7 +75,9 @@ export default function LoginPage({
           </p>
         ) : null}
 
-        <button type="submit" className="btn btn-primary btn-lg">Sign in</button>
+        <SubmitButton type="submit" className="btn btn-primary btn-lg" pendingLabel="Signing in…">
+          Sign in
+        </SubmitButton>
       </form>
     </main>
   );

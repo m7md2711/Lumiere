@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import { deleteOneCase } from "../../actions";
 
 /**
@@ -13,10 +14,10 @@ export default function DeleteCase({ id, caseRef }: { id: string; caseRef: strin
   const [pending, startTransition] = useTransition();
 
   return (
-    <section className="rounded-2xl border border-rose-900/50 bg-rose-950/20 p-5">
+    <section className="rounded-2xl border tint t-crit p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xs uppercase tracking-label text-rose-300">Delete this case</h2>
+          <h2 className="text-xs uppercase tracking-label text-[rgb(var(--crit-fg))]">Delete this case</h2>
           <p className="mt-1.5 text-sm text-slate-600">
             Removes the case, its history and any recording or signed form. Nothing is exported
             first and it cannot be undone — archive instead if you may need it later.
@@ -31,7 +32,7 @@ export default function DeleteCase({ id, caseRef }: { id: string; caseRef: strin
 
       {open ? (
         <form
-          className="mt-4 space-y-3 border-t border-rose-900/40 pt-4"
+          className="mt-4 space-y-3 border-t border-[rgb(var(--crit-ring))] pt-4"
           onSubmit={(e) => {
             e.preventDefault();
             setError(null);
@@ -59,7 +60,7 @@ export default function DeleteCase({ id, caseRef }: { id: string; caseRef: strin
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="btn btn-primary" disabled={pending}>
+            <button className="btn btn-primary" disabled={pending} aria-busy={pending}>
               {pending ? "Deleting…" : "Delete permanently"}
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => { setOpen(false); setError(null); }}>

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getEvents, repeatCountFor, toWhatsApp } from "@/lib/cases";
 import { getEvidence, signedUrlFor } from "@/lib/evidence";
+import { getServiceDetail } from "@/lib/service-detail";
+import { SERVICE_CONCERN, normalizeCategory } from "@/lib/types";
 import { currentSession } from "@/lib/auth";
 import { markOpened } from "../../actions";
 import { getCaseScoped } from "@/lib/scope";
@@ -21,12 +23,14 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   // the case is still `new`.
   await markOpened(c.id);
 
-  const [events, session, evidence, repeat] = await Promise.all([
+  const [events, session, evidence, repeat, service] = await Promise.all([
     getEvents(c.id),
     currentSession(),
     getEvidence(c.id),
     repeatCountFor(c.mobile, c.id),
+    getServiceDetail(c.id),
   ]);
+  const isServiceConcern = normalizeCategory(c.category) === SERVICE_CONCERN;
   const isAdmin = session?.role === "admin";
   const evidenceUrl = evidence ? await signedUrlFor(evidence.path) : null;
   const wa = toWhatsApp(c.mobile);
@@ -38,7 +42,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
       </Link>
 
       <header
-        className={`card p-5 ${isClosed(c.status) ? "border-emerald-900/40" : ""}`}
+        className={`card p-5 ${isClosed(c.status) ? "border-[rgb(var(--ok-ring))]" : ""}`}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -54,7 +58,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
             {isOverdue(c) ? <OverduePill /> : null}
             {repeat > 1 ? (
               <span
-                className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-amber-300 ring-1 ring-amber-900"
+                className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-[rgb(var(--warn-fg))] ring-1 ring-amber-900"
                 title="This mobile number has contacted us before"
               >
                 {repeat} cases from this patient
@@ -97,6 +101,8 @@ export default async function CaseDetail({ params }: { params: { id: string } })
             />
           ) : null}
           {c.satisfaction ? <Field label="Satisfaction" value={`${c.satisfaction} / 5`} /> : null}
+          {service?.employee ? <Field label="Employee" value={service.employee} /> : null}
+          {service?.device ? <Field label="Machine" value={service.device} /> : null}
         </dl>
       </section>
 
@@ -156,6 +162,8 @@ export default async function CaseDetail({ params }: { params: { id: string } })
         contactMethod={c.contact_method}
         isAdmin={Boolean(isAdmin)}
         hasEvidence={Boolean(evidence)}
+        isServiceConcern={isServiceConcern}
+        service={service ? { employee: service.employee, device: service.device } : null}
       />
 
       <section className="card p-5">

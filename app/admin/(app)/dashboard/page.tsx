@@ -7,6 +7,8 @@ import { redirect } from "next/navigation";
 import { currentSession, sessionBranchId } from "@/lib/auth";
 import { sourceOf, sourceShort, type Source } from "@/lib/sources";
 import { getLocations } from "@/lib/cases";
+import { serviceDetailsFor, tally } from "@/lib/service-detail";
+import { SERVICE_CONCERN, normalizeCategory } from "@/lib/types";
 import type { Case } from "@/lib/types";
 import Charts from "./Charts";
 
@@ -121,6 +123,12 @@ export default async function DashboardPage() {
     (r) => !terminal(r.status) && sourceOf(locCode.get(r.qr_location_id ?? "") ?? null) !== "patient"
   ).length;
 
+  // Concerns raised after a service, ranked by machine and by colleague.
+  const concernRows = rows.filter((r) => normalizeCategory(r.category) === SERVICE_CONCERN);
+  const details = await serviceDetailsFor(concernRows.map((r) => r.id));
+  const byDevice = tally(concernRows.map((r) => details[r.id]?.device ?? "")).slice(0, 6);
+  const byEmployee = tally(concernRows.map((r) => details[r.id]?.employee ?? "")).slice(0, 6);
+
   const trend: { name: string; cases: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const day = clinicDayStart(new Date(Date.now() - i * 86_400_000));
@@ -182,6 +190,59 @@ export default async function DashboardPage() {
           })}
         </div>
       </section>
+
+      {concernRows.length > 0 ? (
+        <section className="card p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-xs uppercase tracking-label text-slate-500">
+              Concerns after a service
+            </h2>
+            <span className="text-xs text-slate-500">
+              {concernRows.length} case{concernRows.length === 1 ? "" : "s"} · where they cluster
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-6 sm:grid-cols-2">
+            {[
+              { title: "By machine", data: byDevice },
+              { title: "By employee", data: byEmployee },
+            ].map((block) => (
+              <div key={block.title}>
+                <h3 className="mb-2.5 text-xs text-slate-600">{block.title}</h3>
+                {block.data.length === 0 ? (
+                  <p className="text-sm italic text-slate-400">Nothing recorded yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {block.data.map((d) => (
+                      <li key={d.name}>
+                        <div className="flex items-baseline justify-between gap-3 text-sm">
+                          <span className={d.name === "Not recorded" ? "text-slate-400" : "text-slate-800"}>
+                            {d.name}
+                          </span>
+                          <span className="tabular text-xs text-slate-500">
+                            {d.cases} · {d.share}%
+                          </span>
+                        </div>
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                          <div
+                            className={d.name === "Not recorded" ? "h-full bg-slate-300" : "h-full bg-clinic-600"}
+                            style={{ width: `${Math.max(d.share, 3)}%` }}
+                          />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-4 text-xs text-slate-500">
+            Employee and machine are optional, so &ldquo;not recorded&rdquo; is expected early on.
+            The ranking is only as good as what the branches fill in.
+          </p>
+        </section>
+      ) : null}
 
       <Charts
         byBranch={byBranch}

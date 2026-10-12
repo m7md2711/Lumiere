@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import { addLocation, deleteLocation, saveBranch, saveLocation, type ActionResult } from "../actions";
 import type { Branch, QrLocation } from "@/lib/types";
 
@@ -77,7 +78,7 @@ export default function BranchCard({
               />
               Active — patients can submit from this branch
             </label>
-            <button className="btn btn-primary" disabled={pending}>Save branch</button>
+            <button className="btn btn-primary" disabled={pending} aria-busy={pending}>Save branch</button>
           </form>
 
           <div className="border-t border-slate-100 pt-4">
@@ -99,12 +100,12 @@ export default function BranchCard({
                         name="label_ar" className="field py-2 text-sm" dir="rtl"
                         defaultValue={l.label_ar} required
                       />
-                      <button className="btn btn-ghost py-2 text-xs" disabled={pending}>Save</button>
+                      <button className="btn btn-ghost py-2 text-xs" disabled={pending} aria-busy={pending}>Save</button>
                     </div>
                   </form>
                   <form onSubmit={submit(deleteLocation)} className="mt-2">
                     <input type="hidden" name="id" value={l.id} />
-                    <button className="text-xs font-medium text-rose-600 hover:underline" disabled={pending}>
+                    <button className="text-xs font-medium text-rose-600 hover:underline" disabled={pending} aria-busy={pending}>
                       Remove this location
                     </button>
                   </form>
@@ -126,7 +127,7 @@ export default function BranchCard({
                 name="label_ar" className="field py-2 text-sm" dir="rtl"
                 placeholder="غرفة الليزر" required
               />
-              <button className="btn btn-primary py-2 text-xs" disabled={pending}>Add</button>
+              <button className="btn btn-primary py-2 text-xs" disabled={pending} aria-busy={pending}>Add</button>
             </form>
           </div>
 
@@ -134,7 +135,7 @@ export default function BranchCard({
             <p
               role="status"
               className={`rounded-xl px-4 py-3 text-sm ${
-                message.ok ? "bg-emerald-950/60 text-emerald-300 ring-1 ring-emerald-900" : "bg-rose-950/60 text-rose-300 ring-1 ring-rose-900"
+                message.ok ? "tint t-ok" : "tint t-crit"
               }`}
             >
               {message.text}

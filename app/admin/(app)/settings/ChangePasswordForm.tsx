@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import { changePassword } from "../actions";
 
 export default function ChangePasswordForm() {
@@ -58,7 +59,7 @@ export default function ChangePasswordForm() {
           />
         </div>
 
-        <button className="btn btn-primary" disabled={pending}>
+        <button className="btn btn-primary" disabled={pending} aria-busy={pending}>
           {pending ? "Saving…" : "Change password"}
         </button>
 
@@ -67,8 +68,8 @@ export default function ChangePasswordForm() {
             role="status"
             className={`rounded-xl px-4 py-3 text-sm ring-1 ${
               message.ok
-                ? "bg-emerald-950/60 text-emerald-300 ring-emerald-900"
-                : "bg-rose-950/60 text-rose-300 ring-rose-900"
+                ? "tint t-ok"
+                : "tint t-crit"
             }`}
           >
             {message.text}

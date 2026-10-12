@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import { createBranchLogins, createCallCentreLogin } from "../actions";
 import type { GeneratedLogin } from "@/lib/users";
 
@@ -63,13 +64,13 @@ export default function BranchLogins({ existing }: { existing: Existing[] }) {
           Reset every branch password, not just the missing ones
         </label>
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-primary" disabled={pending}>
+          <button className="btn btn-primary" disabled={pending} aria-busy={pending}>
             {pending ? "Creating…" : "Create / reset branch logins"}
           </button>
           <button
             type="button"
             className="btn btn-ghost"
-            disabled={pending}
+            disabled={pending} aria-busy={pending}
             onClick={() => {
               setError(null);
               setLogins(null);

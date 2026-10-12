@@ -2,6 +2,7 @@ import { casesToCsv, type CaseFilters } from "@/lib/cases";
 import { requireSession } from "@/lib/auth";
 import { listCasesScoped } from "@/lib/scope";
 import { audit } from "@/lib/audit";
+import { serviceDetailsFor } from "@/lib/service-detail";
 import { buildZip } from "@/lib/archive";
 
 export const runtime = "nodejs";
@@ -46,7 +47,8 @@ export async function GET(req: Request) {
     });
   }
 
-  return new Response(casesToCsv(rows), {
+  const service = await serviceDetailsFor(rows.map((r) => r.id));
+  return new Response(casesToCsv(rows, service), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="lumiere-cases-${stamp}.csv"`,

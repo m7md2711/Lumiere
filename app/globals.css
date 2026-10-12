@@ -2,8 +2,122 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Palettes. Dark is the brand's own and stays the default; light
+   is the same identity on paper rather than an inversion — gold
+   darkens so it still reads, the ground warms rather than going
+   pure white.
+   ============================================================ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --s-50:   8   8   8;    /* Midnight — page ground */
+  --s-100: 26  26  26;    /* Soft Noir — cards */
+  --s-200: 38  38  38;    /* borders, inputs */
+  --s-300: 58  50  38;
+  --s-400: 110 100  80;
+  --s-500: 138 115  64;   /* Warm Bronze — muted text */
+  --s-600: 168 147 100;
+  --s-700: 201 191 168;
+  --s-800: 227 220 203;
+  --s-900: 241 236 224;   /* primary text */
+  --s-950: 255 255 255;
+
+  --c-50:   23  19  10;
+  --c-100:  36  29  15;
+  --c-200:  58  47  24;
+  --c-300: 107  90  46;
+  --c-400: 138 115  64;
+  --c-500: 168 140  74;
+  --c-600: 201 168  76;   /* Lumiere Gold — the accent */
+  --c-700: 217 190 110;
+  --c-800: 228 204 138;
+  --c-900: 239 220 168;
+  --c-950: 247 235 201;
+
+  --on-gold: 8 8 8;
+
+  --ok-bg:   6  48  37;  --ok-fg:  110 231 183;  --ok-ring:  6  78  59;
+  --warn-bg: 50 30  3;   --warn-fg: 252 211  77; --warn-ring: 87 52  6;
+  --crit-bg: 60 16 16;   --crit-fg: 252 165 165; --crit-ring: 95 25 25;
+  --info-bg:  8 40 62;   --info-fg: 125 211 252; --info-ring: 12 61 92;
+  --hint-bg: 35 24 60;   --hint-fg: 196 181 253; --hint-ring: 54 38 90;
+  --flat-bg: 38 38 38;   --flat-fg: 138 115  64; --flat-ring: 58 50 38;
+
+  --shadow-card: 0 1px 3px rgb(0 0 0 / .7), 0 0 0 1px rgb(201 168 76 / .08);
+  --shadow-lift: 0 10px 28px rgb(0 0 0 / .55);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --s-50:  250 248 244;   /* warm paper */
+  --s-100: 255 255 255;   /* cards */
+  --s-200: 234 228 217;   /* borders */
+  --s-300: 213 203 186;
+  --s-400: 150 138 117;
+  --s-500: 122 102  58;   /* muted */
+  --s-600:  92  77  44;
+  --s-700:  62  53  34;
+  --s-800:  42  36  26;
+  --s-900:  26  22  18;   /* primary text */
+  --s-950:   0   0   0;
+
+  --c-50:  253 248 234;
+  --c-100: 248 239 214;
+  --c-200: 237 223 180;
+  --c-300: 212 189 125;
+  --c-400: 176 145  63;
+  --c-500: 158 130  56;
+  --c-600: 201 168  76;   /* the accent stays the brand's gold */
+  --c-700: 133 110  50;   /* dark enough to read as type on paper */
+  --c-800: 101  84  38;
+  --c-900:  74  63  40;
+  --c-950:  42  36  26;
+
+  --on-gold: 8 8 8;
+
+  --ok-bg:  233 250 242; --ok-fg:   17 94 70;   --ok-ring: 190 232 214;
+  --warn-bg:254 247 224; --warn-fg: 124 74  7;  --warn-ring: 240 219 160;
+  --crit-bg:254 236 236; --crit-fg: 150 32 32;  --crit-ring: 243 199 199;
+  --info-bg: 234 245 254; --info-fg: 23  78 120; --info-ring: 191 222 245;
+  --hint-bg: 243 238 255; --hint-fg: 76  40 140; --hint-ring: 215 203 247;
+  --flat-bg: 240 236 228; --flat-fg: 122 102 58; --flat-ring: 213 203 186;
+
+  --shadow-card: 0 1px 2px rgb(42 36 26 / .06), 0 0 0 1px rgb(42 36 26 / .05);
+  --shadow-lift: 0 10px 28px rgb(42 36 26 / .12);
+}
+
+/* With no explicit choice the viewer's own preference decides. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --s-50:  250 248 244;  --s-100: 255 255 255; --s-200: 234 228 217;
+    --s-300: 213 203 186;  --s-400: 150 138 117; --s-500: 122 102  58;
+    --s-600:  92  77  44;  --s-700:  62  53  34; --s-800:  42  36  26;
+    --s-900:  26  22  18;  --s-950:   0   0   0;
+
+    --c-50:  253 248 234;  --c-100: 248 239 214; --c-200: 237 223 180;
+    --c-300: 212 189 125;  --c-400: 176 145  63; --c-500: 158 130  56;
+    --c-600: 201 168  76;  --c-700: 133 110  50; --c-800: 101  84  38;
+    --c-900:  74  63  40;  --c-950:  42  36  26;
+
+    --ok-bg:  233 250 242; --ok-fg:   17 94 70;   --ok-ring: 190 232 214;
+    --warn-bg:254 247 224; --warn-fg: 124 74  7;  --warn-ring: 240 219 160;
+    --crit-bg:254 236 236; --crit-fg: 150 32 32;  --crit-ring: 243 199 199;
+    --info-bg: 234 245 254; --info-fg: 23  78 120; --info-ring: 191 222 245;
+    --hint-bg: 243 238 255; --hint-fg: 76  40 140; --hint-ring: 215 203 247;
+    --flat-bg: 240 236 228; --flat-fg: 122 102 58; --flat-ring: 213 203 186;
+
+    --shadow-card: 0 1px 2px rgb(42 36 26 / .06), 0 0 0 1px rgb(42 36 26 / .05);
+    --shadow-lift: 0 10px 28px rgb(42 36 26 / .12);
+  }
+}
+
 @layer base {
-  html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
+  html { -webkit-text-size-adjust: 100%; }
 
   /*
     Josefin Sans is a light, wide-set geometric face — beautiful for the brand
@@ -28,7 +142,7 @@
   select option { @apply bg-slate-100 text-slate-800; }
   input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.75) sepia(1) saturate(2.4) hue-rotate(2deg); }
   input[type="checkbox"] { @apply accent-clinic-600; }
-  audio { color-scheme: dark; }
+
 }
 
 @layer components {
@@ -70,10 +184,30 @@
            text-xs font-light text-clinic-700 ring-1 ring-clinic-200;
   }
 
-  /* Status feedback, tuned for a dark ground: tinted surface, bright type. */
-  .alert-error { @apply rounded-xl bg-rose-950/60 px-4 py-3 text-sm text-rose-300 ring-1 ring-rose-900; }
-  .alert-ok    { @apply rounded-xl bg-emerald-950/60 px-4 py-3 text-sm text-emerald-300 ring-1 ring-emerald-900; }
-  .alert-warn  { @apply text-sm text-amber-300; }
+  /* Status feedback. The tints come from variables so one rule covers both
+     themes — a dark chip on paper, or a light one on Midnight, reads as a bug. */
+  .tint {
+    background: rgb(var(--tint-bg));
+    color: rgb(var(--tint-fg));
+    box-shadow: inset 0 0 0 1px rgb(var(--tint-ring));
+  }
+  .t-ok   { --tint-bg: var(--ok-bg);   --tint-fg: var(--ok-fg);   --tint-ring: var(--ok-ring); }
+  .t-warn { --tint-bg: var(--warn-bg); --tint-fg: var(--warn-fg); --tint-ring: var(--warn-ring); }
+  .t-crit { --tint-bg: var(--crit-bg); --tint-fg: var(--crit-fg); --tint-ring: var(--crit-ring); }
+  .t-info { --tint-bg: var(--info-bg); --tint-fg: var(--info-fg); --tint-ring: var(--info-ring); }
+  .t-hint { --tint-bg: var(--hint-bg); --tint-fg: var(--hint-fg); --tint-ring: var(--hint-ring); }
+  .t-flat { --tint-bg: var(--flat-bg); --tint-fg: var(--flat-fg); --tint-ring: var(--flat-ring); }
+  .t-gold {
+    --tint-bg: var(--c-50); --tint-fg: var(--c-700); --tint-ring: var(--c-300);
+  }
+
+  .alert-error { @apply tint t-crit rounded-xl px-4 py-3 text-sm; }
+  .alert-ok    { @apply tint t-ok rounded-xl px-4 py-3 text-sm; }
+  .alert-warn  { @apply text-sm; color: rgb(var(--warn-fg)); }
+
+  .pill {
+    @apply tint inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs;
+  }
 
   /* Josefin's proportional figures drift in columns; force the tabular set. */
   .tabular {
@@ -94,4 +228,54 @@
   .poster { page-break-after: always; break-after: page; }
   .poster:last-child { page-break-after: auto; break-after: auto; }
   body { background: #fff; }
+}
+
+/* ---------------------------------------------------------------- motion
+   Movement that reports state rather than decorating: a button that is
+   working, a panel arriving, a row responding to the pointer. Everything
+   here is suppressed under prefers-reduced-motion by the block at the end.
+   ------------------------------------------------------------------- */
+@layer components {
+  .btn { position: relative; }
+
+  /* A working button dims and stops inviting another click. */
+  .btn[aria-busy="true"] { @apply cursor-wait opacity-80; }
+
+  .card {
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  }
+
+  /* Rows and tiles lift very slightly toward the pointer. */
+  a.card:hover,
+  button.card:hover {
+    @apply border-clinic-300;
+    transform: translateY(-1px);
+  }
+
+  .field { transition: border-color .18s ease, background-color .18s ease; }
+
+  tbody tr { transition: background-color .15s ease; }
+}
+
+@layer utilities {
+  /* Content arriving: a short rise, from a visible resting state. */
+  @keyframes lsc-rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .rise { animation: lsc-rise .28s cubic-bezier(.22,.8,.3,1) both; }
+
+  @keyframes lsc-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .45; }
+  }
+  .pulse-soft { animation: lsc-pulse 1.4s ease-in-out infinite; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .pulse-soft { animation: none !important; }
+  .card, .field, tbody tr, a.card:hover, button.card:hover {
+    transition: none !important;
+    transform: none !important;
+  }
 }

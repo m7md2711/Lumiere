@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Spinner } from "@/components/Spinner";
 import {
   addNote, approveRefund, changePriority, changeStatus, closeCase,
   escalate, logContact, markRefundProcessed, sendCaseReminder, type ActionResult,
@@ -23,6 +24,7 @@ const tabs: { id: Tab; label: string }[] = [
 
 export default function CaseActions({
   id, status, priority, refundStatus, contactMethod, isAdmin, hasEvidence,
+  isServiceConcern, service,
 }: {
   id: string;
   status: Status;
@@ -31,6 +33,8 @@ export default function CaseActions({
   contactMethod: string;
   isAdmin: boolean;
   hasEvidence: boolean;
+  isServiceConcern: boolean;
+  service: { employee: string; device: string } | null;
 }) {
   const visibleTabs = isAdmin ? tabs : tabs.filter((x) => x.id !== "close" && x.id !== "remind");
   const [tab, setTab] = useState<Tab>("status");
@@ -113,6 +117,37 @@ export default function CaseActions({
               ) : null}
             </div>
 
+
+            {isServiceConcern ? (
+              <div className="rounded-xl border border-slate-300 bg-slate-200/60 p-3">
+                <div className="mb-2 text-xs uppercase tracking-label text-slate-500">
+                  Who and what was involved — optional
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="label" htmlFor="employee">Employee</label>
+                    <input
+                      id="employee" name="employee" className="field py-2.5 text-sm"
+                      defaultValue={service?.employee ?? ""} autoComplete="off"
+                      placeholder="Who performed the service"
+                    />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="device">Machine or device</label>
+                    <input
+                      id="device" name="device" className="field py-2.5 text-sm"
+                      defaultValue={service?.device ?? ""} autoComplete="off"
+                      placeholder="Which machine was used"
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Leave blank if you are not sure. Recorded only to spot a machine or a
+                  colleague that keeps coming up.
+                </p>
+              </div>
+            ) : null}
+
             {EVIDENCE_REQUIRED_STATUSES.includes(nextStatus) ? (
               <div>
                 <label className="label" htmlFor="evidence">
@@ -143,7 +178,7 @@ export default function CaseActions({
                 placeholder="What changed and why"
               />
             </div>
-            <button className="btn btn-primary" disabled={pending}>Update status</button>
+            <button className="btn btn-primary" disabled={pending} aria-busy={pending}>Update status</button>
           </form>
 
           <form onSubmit={submit(changePriority)} className="space-y-3 border-t border-slate-100 pt-4">
@@ -156,7 +191,7 @@ export default function CaseActions({
                 ))}
               </select>
             </div>
-            <button className="btn btn-ghost" disabled={pending}>
+            <button className="btn btn-ghost" disabled={pending} aria-busy={pending}>
               Update priority &amp; SLA
             </button>
           </form>
@@ -173,7 +208,7 @@ export default function CaseActions({
               placeholder="Visible to staff only"
             />
           </div>
-          <button className="btn btn-primary" disabled={pending}>Add note</button>
+          <button className="btn btn-primary" disabled={pending} aria-busy={pending}>Add note</button>
         </form>
       ) : null}
 
@@ -196,7 +231,7 @@ export default function CaseActions({
               placeholder="Reached the patient, no answer, left a message…"
             />
           </div>
-          <button className="btn btn-primary" disabled={pending}>Log contact attempt</button>
+          <button className="btn btn-primary" disabled={pending} aria-busy={pending}>Log contact attempt</button>
         </form>
       ) : null}
 
@@ -210,7 +245,7 @@ export default function CaseActions({
               placeholder="Why this needs to leave the branch"
             />
           </div>
-          <button className="btn btn-primary" disabled={pending}>Escalate case</button>
+          <button className="btn btn-primary" disabled={pending} aria-busy={pending}>Escalate case</button>
         </form>
       ) : null}
 
@@ -229,7 +264,7 @@ export default function CaseActions({
               <label className="label">Reason</label>
               <textarea name="reason" className="field min-h-[80px]" required />
             </div>
-            <button className="btn btn-primary" disabled={pending}>Approve refund</button>
+            <button className="btn btn-primary" disabled={pending} aria-busy={pending}>Approve refund</button>
           </form>
 
           {refundStatus === "pending" ? (
@@ -238,7 +273,7 @@ export default function CaseActions({
               className="border-t border-slate-100 pt-4"
             >
               <input type="hidden" name="id" value={id} />
-              <button className="btn btn-ghost" disabled={pending}>Mark refund processed</button>
+              <button className="btn btn-ghost" disabled={pending} aria-busy={pending}>Mark refund processed</button>
             </form>
           ) : refundStatus === "processed" ? (
             <p className="border-t border-slate-100 pt-4 text-sm text-emerald-700">
@@ -279,7 +314,7 @@ export default function CaseActions({
               placeholder="Patient called again this morning"
             />
           </div>
-          <button className="btn btn-primary" disabled={pending}>
+          <button className="btn btn-primary" disabled={pending} aria-busy={pending}>
             {pending ? "Sending…" : "Send reminder"}
           </button>
         </form>
@@ -330,6 +365,37 @@ export default function CaseActions({
               </p>
             </div>
           ) : null}
+
+          {isServiceConcern ? (
+            <div className="rounded-xl border border-slate-300 bg-slate-200/60 p-3">
+              <div className="mb-2 text-xs uppercase tracking-label text-slate-500">
+                Who and what was involved — optional
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="label" htmlFor="employee">Employee</label>
+                  <input
+                    id="employee" name="employee" className="field py-2.5 text-sm"
+                    defaultValue={service?.employee ?? ""} autoComplete="off"
+                    placeholder="Who performed the service"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="device">Machine or device</label>
+                  <input
+                    id="device" name="device" className="field py-2.5 text-sm"
+                    defaultValue={service?.device ?? ""} autoComplete="off"
+                    placeholder="Which machine was used"
+                  />
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Leave blank if you are not sure. Recorded only to spot a machine or a
+                colleague that keeps coming up.
+              </p>
+            </div>
+          ) : null}
+
           <div>
             <label className="label">Resolution note</label>
             <textarea
@@ -364,7 +430,7 @@ export default function CaseActions({
               ))}
             </select>
           </div>
-          <button className="btn btn-primary" disabled={pending}>
+          <button className="btn btn-primary" disabled={pending} aria-busy={pending}>
             {closeMode === "follow_up" ? "Close and schedule follow-up" : "Close permanently"}
           </button>
         </form>
@@ -374,7 +440,7 @@ export default function CaseActions({
         <p
           role="status"
           className={`mt-4 rounded-xl px-4 py-3 text-sm ${
-            message.ok ? "bg-emerald-950/60 text-emerald-300 ring-1 ring-emerald-900" : "bg-rose-950/60 text-rose-300 ring-1 ring-rose-900"
+            message.ok ? "tint t-ok" : "tint t-crit"
           }`}
         >
           {message.text}

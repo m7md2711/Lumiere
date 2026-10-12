@@ -86,13 +86,13 @@ export default async function LoggedPage({
               {categoryLabel(c.category, "en")} · {c.branches?.name_en ?? "—"}
             </div>
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex rounded-full bg-clinic-50 px-2.5 py-1 text-xs text-clinic-700 ring-1 ring-clinic-300">
+              <span className="inline-flex rounded-full tint t-gold px-2.5 py-1 text-xs">
                 {sourceShort[sourceOf(c.qr_locations?.code)]}
               </span>
               <PriorityPill priority={c.priority} />
               {isOverdue(c) ? <OverduePill /> : null}
               {(repeats[c.mobile] ?? 1) > 1 ? (
-                <span className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-amber-300 ring-1 ring-amber-900">
+                <span className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-[rgb(var(--warn-fg))] ring-1 ring-amber-900">
                   {repeats[c.mobile]}× patient
                 </span>
               ) : null}

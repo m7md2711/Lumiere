@@ -56,7 +56,7 @@ export default async function FollowUpPage() {
               key={c.id}
               className={[
                 "card p-5",
-                d.overdue ? "border-rose-900/50" : d.today ? "border-clinic-600" : "",
+                d.overdue ? "border-[rgb(var(--crit-ring))]" : d.today ? "border-clinic-600" : "",
               ].join(" ")}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -77,7 +77,7 @@ export default async function FollowUpPage() {
                   <span
                     className={[
                       "tabular text-xs",
-                      d.overdue ? "text-rose-300" : d.today ? "text-clinic-700" : "text-slate-500",
+                      d.overdue ? "text-[rgb(var(--crit-fg))]" : d.today ? "text-clinic-700" : "text-slate-500",
                     ].join(" ")}
                   >
                     {rec!.at} · {d.text}
