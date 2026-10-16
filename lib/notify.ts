@@ -50,7 +50,11 @@ export async function notifyNewCase(c: CaseWithBranch, repeat?: number): Promise
 }
 
 /** The branch has solved it; the administrator must review before closing. */
-export async function notifyReadyForReview(c: CaseWithBranch, note: string): Promise<void> {
+export async function notifyReadyForReview(
+  c: CaseWithBranch,
+  note: string,
+  hasEvidence = false
+): Promise<void> {
   const to = await recipientsFor(c.branches?.code ?? null);
   if (to.admin.length === 0) return;
 
@@ -59,8 +63,11 @@ export async function notifyReadyForReview(c: CaseWithBranch, note: string): Pro
     `Ready for review: ${c.ref} — ${c.branches?.name_en ?? "Lumiere"}`,
     `<p style="margin:0 0 4px;font-size:16px;color:#c9a84c">A case is waiting on you</p>
      <p style="margin:0;color:#a89364;font-size:13px">
-       ${esc(c.branches?.name_en ?? "The branch")} has marked this solved and attached the signed
-       complaint form. It stays open until you review the trail and close it.
+       ${esc(c.branches?.name_en ?? "The branch")} has marked this solved.
+       ${hasEvidence
+         ? "The signed complaint form is attached."
+         : "<b style=\"color:#fbbf24\">No signed form is on file yet</b> — ask for it if this case needs one."}
+       It stays open until you review the trail and close it.
      </p>
      ${facts(c)}
      ${note ? `<p style="margin:0 0 10px;padding:12px;background:#101010;border-left:2px solid #8a7340">${esc(note)}</p>` : ""}

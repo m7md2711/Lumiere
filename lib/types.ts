@@ -46,8 +46,17 @@ export const STATUSES: Status[] = [
 /** What a branch may set. Closing is the administrator's alone. */
 export const BRANCH_STATUSES: Status[] = ["opened", "under_review", "solved", "escalated"];
 
-/** Solving requires the patient's signed complaint form to be attached. */
-export const EVIDENCE_REQUIRED_STATUSES: Status[] = ["solved"];
+/**
+ * Statuses that refuse to save without the signed form. Deliberately empty:
+ * requiring it stopped branches recording work they had genuinely finished,
+ * when the patient had not signed yet or the scan was still on someone's
+ * phone. The form is still asked for, and its absence is flagged to the
+ * administrator at review — which is the right place to judge it.
+ */
+export const EVIDENCE_REQUIRED_STATUSES: Status[] = [];
+
+/** Where the upload is offered, even though it is not enforced. */
+export const EVIDENCE_PROMPT_STATUSES: Status[] = ["solved", "closed"];
 
 /** The branch has this long to move a case off `new`. */
 export const FIRST_RESPONSE_HOURS = 24;

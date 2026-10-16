@@ -7,7 +7,7 @@ import {
   escalate, logContact, markRefundProcessed, sendCaseReminder, type ActionResult,
 } from "../../actions";
 import { statusLabel } from "@/lib/i18n";
-import { BRANCH_STATUSES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES, PRIORITIES, STATUSES } from "@/lib/types";
+import { BRANCH_STATUSES, EVIDENCE_PROMPT_STATUSES, NOTE_REQUIRED_STATUSES, PRIORITIES, STATUSES } from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
 type Tab = "status" | "note" | "contact" | "escalate" | "refund" | "remind" | "close";
@@ -148,10 +148,10 @@ export default function CaseActions({
               </div>
             ) : null}
 
-            {EVIDENCE_REQUIRED_STATUSES.includes(nextStatus) ? (
+            {EVIDENCE_PROMPT_STATUSES.includes(nextStatus) ? (
               <div>
                 <label className="label" htmlFor="evidence">
-                  Complaint form signed by the patient{hasEvidence ? " (replace)" : " (required)"}
+                  Complaint form signed by the patient{hasEvidence ? " (replace)" : " (optional)"}
                 </label>
                 <input
                   id="evidence"
@@ -160,10 +160,11 @@ export default function CaseActions({
                   accept="application/pdf,image/jpeg,image/png,image/heic,image/webp"
                   className="field py-2.5 text-sm file:mr-3 file:rounded-full file:border-0
                              file:bg-clinic-600 file:px-3 file:py-1.5 file:text-xs file:text-ink"
-                  required={!hasEvidence}
                 />
                 <p className="mt-1.5 text-xs text-slate-500">
-                  PDF or a photo, up to 10 MB. Stored privately — only staff with a link can open it.
+                  PDF or a photo, up to 10 MB. Stored privately. Attach it when you have it —
+                  the case can be marked solved either way, and the administrator sees whether
+                  one is on file when they review.
                 </p>
               </div>
             ) : null}

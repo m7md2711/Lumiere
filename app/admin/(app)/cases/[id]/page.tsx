@@ -146,10 +146,18 @@ export default async function CaseDetail({ params }: { params: { id: string } })
               Attached by {evidence.by} · {shortDate(evidence.at)}
             </span>
           </div>
+        ) : c.status === "solved" || c.status === "closed" ? (
+          // The branch has finished without one. Not blocked, but the person
+          // closing the case should see it rather than discover it later.
+          <p className="alert-warn">
+            No signed form on file, and this case is already marked{" "}
+            {c.status === "solved" ? "solved" : "closed"}. Ask the branch for it if this
+            complaint needs one on record.
+          </p>
         ) : (
           <p className="text-sm italic text-slate-400">
-            Nothing attached yet. The branch must attach the form the patient signed before
-            this case can be marked solved.
+            Nothing attached yet. The branch can add the form the patient signed at any
+            point — it is not required to mark the case solved.
           </p>
         )}
       </section>

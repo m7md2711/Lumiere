@@ -6,6 +6,7 @@ import { CATEGORIES, PRIORITIES, STATUSES, isOverdue } from "@/lib/types";
 import { OverduePill, PriorityPill, StatusPill, rowTone, shortDate } from "@/components/Pills";
 import { IconMic } from "@/components/Icons";
 import { sourceOf, sourceShort } from "@/lib/sources";
+import { evidencePresence } from "@/lib/evidence";
 import Filters from "./Filters";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,10 @@ export default async function CasesPage({
   ]);
   // One query for the whole page rather than one per row.
   const repeats = await repeatCounts(cases.map((c) => c.mobile));
+  // Which solved cases are still missing the signed form.
+  const withForm = await evidencePresence(
+    cases.filter((c) => c.status === "solved").map((c) => c.id)
+  );
   const repeatOf = (m: string) => repeats[m] ?? 1;
   const qs = new URLSearchParams(
     Object.entries(filters).filter(([, v]) => v) as [string, string][]
@@ -106,6 +111,11 @@ export default async function CasesPage({
               {sourceOf(c.qr_locations?.code) !== "patient" ? (
                 <span className="inline-flex rounded-full tint t-gold px-2.5 py-1 text-xs">
                   {sourceShort[sourceOf(c.qr_locations?.code)]}
+                </span>
+              ) : null}
+              {c.status === "solved" && !withForm.has(c.id) ? (
+                <span className="pill t-warn" title="Marked solved with no signed form on file">
+                  No form
                 </span>
               ) : null}
               {c.voice_url ? (

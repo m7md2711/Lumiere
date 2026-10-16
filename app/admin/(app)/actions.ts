@@ -30,7 +30,7 @@ import { setServiceDetail } from "@/lib/service-detail";
 import { notifyClosed, notifyReadyForReview, notifyReminder } from "@/lib/notify";
 import { currentSession } from "@/lib/auth";
 import {
-  BRANCH_STATUSES, CATEGORIES, EVIDENCE_REQUIRED_STATUSES, NOTE_REQUIRED_STATUSES,
+  BRANCH_STATUSES, CATEGORIES, NOTE_REQUIRED_STATUSES,
   SERVICE_CONCERN, STATUSES, normalizeCategory,
 } from "@/lib/types";
 import type { Category, Priority, Status } from "@/lib/types";
@@ -75,12 +75,6 @@ export async function changeStatus(formData: FormData): Promise<ActionResult> {
   const file = formData.get("evidence");
   const hasNewFile = file instanceof File && file.size > 0;
   const alreadyAttached = await getEvidence(id);
-  if (EVIDENCE_REQUIRED_STATUSES.includes(status) && !hasNewFile && !alreadyAttached) {
-    return {
-      ok: false,
-      error: "Attach the complaint form signed by the patient before marking this solved.",
-    };
-  }
 
   const patch: Record<string, unknown> = { status };
 
@@ -123,7 +117,9 @@ export async function changeStatus(formData: FormData): Promise<ActionResult> {
   // The administrator is told when a case needs reviewing, not on every move.
   const fresh = await getCase(id);
   if (fresh) {
-    if (status === "solved") void notifyReadyForReview(fresh, note).catch(() => {});
+    if (status === "solved") {
+      void notifyReadyForReview(fresh, note, Boolean(hasNewFile || alreadyAttached)).catch(() => {});
+    }
     if (status === "closed") {
       void notifyClosed(fresh, note, Number(fresh.satisfaction ?? 0)).catch(() => {});
     }
