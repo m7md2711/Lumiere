@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { db } from "./supabase";
@@ -22,7 +23,12 @@ function secret(): Uint8Array {
 
 // ------------------------------------------------------------- stored password
 
-async function storedHash(): Promise<string | null> {
+/**
+ * React.cache dedupes within a single request. The layout, the page and the
+ * scoping helper all ask who is signed in; without this each one made its own
+ * round trip to a database on the other side of the world.
+ */
+const storedHash = cache(async function storedHash(): Promise<string | null> {
   const { data, error } = await db()
     .from("app_settings")
     .select("value")
@@ -30,7 +36,7 @@ async function storedHash(): Promise<string | null> {
     .maybeSingle();
   if (error) return null;
   return (data as { value: string } | null)?.value ?? null;
-}
+});
 
 function envPassword(): string {
   return process.env.ADMIN_PASS ?? "";
@@ -50,9 +56,9 @@ async function currentSecretMaterial(): Promise<string> {
   return (await storedHash()) ?? `env:${envPassword()}`;
 }
 
-export async function currentPasswordVersion(): Promise<string> {
+export const currentPasswordVersion = cache(async function currentPasswordVersion(): Promise<string> {
   return passwordVersion(await currentSecretMaterial());
-}
+});
 
 async function adminPasswordOk(pass: string): Promise<boolean> {
   const hash = await storedHash();
@@ -157,7 +163,7 @@ export type Session =
  * issued against the password currently in force for that identity, so changing
  * a password signs out every device holding the old one.
  */
-export async function currentSession(): Promise<Session | null> {
+export const currentSession = cache(async function currentSession(): Promise<Session | null> {
   const token = cookies().get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
@@ -194,7 +200,7 @@ export async function currentSession(): Promise<Session | null> {
     branchCode: user.branchCode,
     branchName: user.branchName,
   };
-}
+});
 
 /** Any signed-in user. Throws rather than returning null, for server actions. */
 export async function requireSession(): Promise<Session> {

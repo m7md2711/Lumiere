@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { db } from "./supabase";
 import { hashPassword, passwordVersion, verifyPassword } from "./password";
 import { getBranches } from "./cases";
@@ -52,7 +53,7 @@ export function generatePassword(branchName: string): string {
   return `${pascalName(branchName)}-${rand}-26`;
 }
 
-async function readStore(): Promise<Store> {
+const readStore = cache(async function readStore(): Promise<Store> {
   const { data } = await db().from("app_settings").select("value").eq("key", KEY).maybeSingle();
   const raw = (data as { value: string } | null)?.value;
   if (!raw) return {};
@@ -61,7 +62,7 @@ async function readStore(): Promise<Store> {
   } catch {
     return {};
   }
-}
+});
 
 async function writeStore(s: Store): Promise<void> {
   const { error } = await db()
@@ -160,7 +161,7 @@ const CC_KEY = "callcenter_user";
 
 export type StaffUser = { username: string; hash: string; updatedAt: string };
 
-export async function getCallCentreUser(): Promise<StaffUser | null> {
+export const getCallCentreUser = cache(async function getCallCentreUser(): Promise<StaffUser | null> {
   const { data } = await db().from("app_settings").select("value").eq("key", CC_KEY).maybeSingle();
   const raw = (data as { value: string } | null)?.value;
   if (!raw) return null;
@@ -169,7 +170,7 @@ export async function getCallCentreUser(): Promise<StaffUser | null> {
   } catch {
     return null;
   }
-}
+});
 
 export async function verifyCallCentreUser(
   supplied: string,

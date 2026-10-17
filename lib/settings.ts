@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { db } from "./supabase";
 
 /**
@@ -53,9 +54,9 @@ export const defaultSmtp: SmtpSettings = {
   enabled: false,
 };
 
-export async function getSmtp(): Promise<SmtpSettings> {
+export const getSmtp = cache(async function getSmtp(): Promise<SmtpSettings> {
   return readJson<SmtpSettings>(SMTP_KEY, defaultSmtp);
-}
+});
 
 export async function saveSmtp(s: SmtpSettings): Promise<void> {
   await writeJson(SMTP_KEY, s);
@@ -79,9 +80,9 @@ export function addressList(raw: string): string[] {
   return raw.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
 }
 
-export async function getBranchEmails(): Promise<BranchEmails> {
+export const getBranchEmails = cache(async function getBranchEmails(): Promise<BranchEmails> {
   return readJson<BranchEmails>(BRANCH_EMAIL_KEY, {});
-}
+});
 
 export async function setBranchEmail(code: string, email: string): Promise<void> {
   const all = await getBranchEmails();

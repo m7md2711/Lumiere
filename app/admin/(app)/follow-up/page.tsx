@@ -19,7 +19,7 @@ export default async function FollowUpPage() {
   if (!session) return null;
 
   const cases = await listCasesScoped({ status: "follow_up" }, 500);
-  const recs = await followUpsFor(cases.map((c) => c.id));
+  const recs = cases.length ? await followUpsFor(cases.map((c) => c.id)) : {};
 
   const withDates = cases
     .map((c) => ({ c, rec: recs[c.id] }))

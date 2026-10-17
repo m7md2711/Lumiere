@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { db, VOICE_BUCKET } from "./supabase";
 import { categoryLabel } from "./i18n";
 import { clinicDateEnd, clinicDateStart, formatForCsv } from "./time";
@@ -24,11 +25,11 @@ export function priorityForCategory(category: Category): Priority {
 
 // ------------------------------------------------------------- reads
 
-export async function getBranches(): Promise<Branch[]> {
+export const getBranches = cache(async function getBranches(): Promise<Branch[]> {
   const { data, error } = await db().from("branches").select("*").order("code");
   if (error) throw error;
   return (data ?? []) as Branch[];
-}
+});
 
 export async function getBranchByCode(code: string): Promise<Branch | null> {
   const { data } = await db()
@@ -39,13 +40,13 @@ export async function getBranchByCode(code: string): Promise<Branch | null> {
   return (data as Branch) ?? null;
 }
 
-export async function getLocations(branchId?: string): Promise<QrLocation[]> {
+export const getLocations = cache(async function getLocations(branchId?: string): Promise<QrLocation[]> {
   let q = db().from("qr_locations").select("*").order("code");
   if (branchId) q = q.eq("branch_id", branchId);
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as QrLocation[];
-}
+});
 
 const CASE_SELECT =
   "*, branches ( code, name_en, name_ar ), qr_locations ( code, label_en, label_ar )";

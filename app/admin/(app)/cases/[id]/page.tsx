@@ -31,6 +31,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
     getServiceDetail(c.id),
   ]);
   const isServiceConcern = normalizeCategory(c.category) === SERVICE_CONCERN;
+
   const isAdmin = session?.role === "admin";
   const evidenceUrl = evidence ? await signedUrlFor(evidence.path) : null;
   const wa = toWhatsApp(c.mobile);

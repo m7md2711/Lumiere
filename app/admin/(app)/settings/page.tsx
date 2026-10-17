@@ -34,15 +34,15 @@ export default async function SettingsPage() {
     listBranchUsers(),
   ]);
 
-  const [smtp, branchEmails, allBranches] = await Promise.all([
-    getSmtp(), getBranchEmails(), getBranches(),
+  const [smtp, branchEmails, allBranches, intake, legacy] = await Promise.all([
+    getSmtp(),
+    getBranchEmails(),
+    getBranches(),
+    readJson<IntakeCodes>(INTAKE_KEY, defaultIntakeCodes),
+    db().from("cases").select("id", { count: "exact", head: true })
+      .in("category", ["treatment", "medical"]),
   ]);
-  const intake = await readJson<IntakeCodes>(INTAKE_KEY, defaultIntakeCodes);
-
-  const { count: legacyCount } = await db()
-    .from("cases")
-    .select("id", { count: "exact", head: true })
-    .in("category", ["treatment", "medical"]);
+  const legacyCount = legacy.count;
 
   const changedAt = (data as { updated_at: string } | null)?.updated_at ?? null;
 

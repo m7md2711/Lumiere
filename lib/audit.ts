@@ -68,7 +68,8 @@ export async function audit(
       value: JSON.stringify(entry),
       updated_at: at,
     });
-    await prune();
+    // Pruning runs on the daily cron, not here: a delete on every sign-in
+    // bought nothing and cost a round trip on the slowest action we have.
   } catch {
     // Logging is best effort. Losing an entry must never lock anybody out.
   }

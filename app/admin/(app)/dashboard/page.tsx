@@ -125,7 +125,9 @@ export default async function DashboardPage() {
 
   // Concerns raised after a service, ranked by machine and by colleague.
   const concernRows = rows.filter((r) => normalizeCategory(r.category) === SERVICE_CONCERN);
-  const details = await serviceDetailsFor(concernRows.map((r) => r.id));
+  const details = concernRows.length
+    ? await serviceDetailsFor(concernRows.map((r) => r.id))
+    : {};
   const byDevice = tally(concernRows.map((r) => details[r.id]?.device ?? "")).slice(0, 6);
   const byEmployee = tally(concernRows.map((r) => details[r.id]?.employee ?? "")).slice(0, 6);
 

@@ -30,11 +30,11 @@ export default async function CasesPage({
     isAdminSession(),
   ]);
   // One query for the whole page rather than one per row.
-  const repeats = await repeatCounts(cases.map((c) => c.mobile));
-  // Which solved cases are still missing the signed form.
-  const withForm = await evidencePresence(
-    cases.filter((c) => c.status === "solved").map((c) => c.id)
-  );
+  // Both depend on the list but not on each other, so they go together.
+  const [repeats, withForm] = await Promise.all([
+    repeatCounts(cases.map((c) => c.mobile)),
+    evidencePresence(cases.filter((c) => c.status === "solved").map((c) => c.id)),
+  ]);
   const repeatOf = (m: string) => repeats[m] ?? 1;
   const qs = new URLSearchParams(
     Object.entries(filters).filter(([, v]) => v) as [string, string][]
