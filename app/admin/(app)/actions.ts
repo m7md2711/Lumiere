@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/lib/supabase";
 import {
   checkCredentials, adminUser, reissueAdminSession, requireAdmin,
@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth";
 import { assertCaseInScope } from "@/lib/scope";
 import { validateNewPassword } from "@/lib/password";
-import { addEvent, createCase, getCase, slaHoursFor } from "@/lib/cases";
+import { BRANCHES_TAG, addEvent, createCase, getCase, slaHoursFor } from "@/lib/cases";
 import { statusLabel } from "@/lib/i18n";
 import { formatLongDateTime } from "@/lib/time";
 import {
@@ -338,6 +338,7 @@ export async function saveBranch(formData: FormData): Promise<ActionResult> {
 
   revalidatePath("/admin/branches");
   revalidatePath("/admin/qr");
+  revalidateTag(BRANCHES_TAG);
   return { ok: true };
 }
 
@@ -357,6 +358,7 @@ export async function saveLocation(formData: FormData): Promise<ActionResult> {
 
   revalidatePath("/admin/branches");
   revalidatePath("/admin/qr");
+  revalidateTag(BRANCHES_TAG);
   return { ok: true };
 }
 
@@ -387,6 +389,7 @@ export async function addLocation(formData: FormData): Promise<ActionResult> {
 
   revalidatePath("/admin/branches");
   revalidatePath("/admin/qr");
+  revalidateTag(BRANCHES_TAG);
   return { ok: true };
 }
 
@@ -408,6 +411,7 @@ export async function deleteLocation(formData: FormData): Promise<ActionResult> 
 
   revalidatePath("/admin/branches");
   revalidatePath("/admin/qr");
+  revalidateTag(BRANCHES_TAG);
   return { ok: true };
 }
 
@@ -704,6 +708,7 @@ export async function createBranch(formData: FormData): Promise<ActionResult> {
   revalidatePath("/admin/qr");
   revalidatePath("/admin/settings");
   revalidatePath("/start");
+  revalidateTag(BRANCHES_TAG);
   return { ok: true };
 }
 
@@ -727,6 +732,7 @@ export async function saveIntakeCodes(formData: FormData): Promise<ActionResult>
         : "One or both intake links left unguarded",
   });
   revalidatePath("/admin/settings");
+  revalidateTag(BRANCHES_TAG);
   return { ok: true };
 }
 

@@ -37,8 +37,8 @@ const config: Config = {
         bronze: "#8a7340",
       },
       fontFamily: {
-        sans: ["Josefin Sans", "Almarai", "system-ui", "-apple-system", "sans-serif"],
-        arabic: ["Almarai", "Josefin Sans", "system-ui", "sans-serif"],
+        sans: ["var(--font-josefin)", "var(--font-almarai)", "system-ui", "-apple-system", "sans-serif"],
+        arabic: ["var(--font-almarai)", "var(--font-josefin)", "system-ui", "sans-serif"],
       },
       letterSpacing: { brand: "0.18em", label: "0.22em" },
       boxShadow: {

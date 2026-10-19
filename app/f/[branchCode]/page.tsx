@@ -1,6 +1,7 @@
 import { getBranchByCode, getLocations } from "@/lib/cases";
 import { LogoMark } from "@/components/Logo";
 import FeedbackForm from "./FeedbackForm";
+import { serverLang } from "@/lib/lang";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export default async function PatientFormPage({
 
   return (
     <FeedbackForm
+      initialLang={serverLang()}
       branch={{
         code: branch.code,
         name_en: branch.name_en,

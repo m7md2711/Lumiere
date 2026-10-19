@@ -1,5 +1,5 @@
 import { db } from "./supabase";
-import { getBranches } from "./cases";
+import { getBranches, getLocations } from "./cases";
 
 /**
  * Where a case came in. A patient scanning the QR at reception is one route;
@@ -69,7 +69,17 @@ export async function ensureInternalLocations(): Promise<void> {
   const branches = (await getBranches()).filter((b) => b.is_active);
   if (branches.length === 0) return;
 
-  const rows = branches.flatMap((b) => [
+  // This used to upsert twenty rows on every view of the intake and "raise"
+  // pages, even though they had existed for weeks. Check the cached list
+  // first and write only what is genuinely missing — normally nothing.
+  const existing = await getLocations();
+  const have = new Set(existing.map((l) => `${l.branch_id}:${l.code}`));
+  const missing = branches.filter(
+    (b) => !have.has(`${b.id}:${MANAGER_CODE}`) || !have.has(`${b.id}:${CALLCENTER_CODE}`)
+  );
+  if (missing.length === 0) return;
+
+  const rows = missing.flatMap((b) => [
     {
       branch_id: b.id,
       code: MANAGER_CODE,

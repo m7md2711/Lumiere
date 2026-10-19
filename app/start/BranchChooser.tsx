@@ -26,8 +26,15 @@ const copy = {
   },
 } as const;
 
-export default function BranchChooser({ branches }: { branches: B[] }) {
-  const [lang, setLang] = useState<Lang>("en");
+export default function BranchChooser({
+  branches,
+  initialLang,
+}: {
+  branches: B[];
+  initialLang: Lang;
+}) {
+  // Server-rendered in this language, so the branch list is visible at once.
+  const [lang, setLang] = useState<Lang>(initialLang);
   const [ready, setReady] = useState(false);
   const [q, setQ] = useState("");
 
@@ -36,16 +43,14 @@ export default function BranchChooser({ branches }: { branches: B[] }) {
   const rtl = lang === "ar";
 
   useEffect(() => {
-    let initial: Lang = navigator.language?.toLowerCase().startsWith("ar") ? "ar" : "en";
     try {
       const saved = localStorage.getItem(LANG_KEY);
-      if (saved === "ar" || saved === "en") initial = saved;
+      if ((saved === "ar" || saved === "en") && saved !== initialLang) setLang(saved);
     } catch {
       /* private mode */
     }
-    setLang(initial);
     setReady(true);
-  }, []);
+  }, [initialLang]);
 
   useEffect(() => {
     if (!ready) return;
@@ -54,6 +59,7 @@ export default function BranchChooser({ branches }: { branches: B[] }) {
     } catch {
       /* nothing to do */
     }
+    document.cookie = `lsc_lang=${lang}; path=/; max-age=31536000; samesite=lax`;
     document.documentElement.lang = lang;
     document.documentElement.dir = rtl ? "rtl" : "ltr";
   }, [lang, rtl, ready]);
@@ -64,7 +70,6 @@ export default function BranchChooser({ branches }: { branches: B[] }) {
     return b.name_en.toLowerCase().includes(s) || b.name_ar.includes(q.trim());
   });
 
-  if (!ready) return <div className="min-h-screen bg-slate-50" />;
 
   return (
     <div dir={rtl ? "rtl" : "ltr"} className="min-h-screen bg-slate-50">

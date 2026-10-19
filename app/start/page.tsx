@@ -1,5 +1,6 @@
 import { getBranches } from "@/lib/cases";
 import BranchChooser from "./BranchChooser";
+import { serverLang } from "@/lib/lang";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function StartPage() {
   const branches = (await getBranches()).filter((b) => b.is_active);
   return (
     <BranchChooser
+      initialLang={serverLang()}
       branches={branches.map((b) => ({
         code: b.code,
         name_en: b.name_en,

@@ -16,11 +16,16 @@ const LANG_KEY = "lsc_lang";
 export default function FeedbackForm({
   branch,
   location,
+  initialLang,
 }: {
   branch: BranchChip;
   location: LocChip;
+  initialLang: Lang;
 }) {
-  const [lang, setLang] = useState<Lang>("en");
+  // Rendered on the server in this language, so the form is on screen before
+  // any JavaScript runs. It used to wait for the browser to read a saved
+  // preference first, which meant two seconds of blank page.
+  const [lang, setLang] = useState<Lang>(initialLang);
   const [ready, setReady] = useState(false);
   const [step, setStep] = useState(0); // 0 category · 1 details · 2 contact · 3 done
   const [error, setError] = useState<string | null>(null);
@@ -39,18 +44,17 @@ export default function FeedbackForm({
   const L = useMemo(() => t(lang), [lang]);
   const rtl = lang === "ar";
 
-  // Browser language on first visit, the saved choice on every visit after.
+  // An older visit may have saved a choice only in localStorage, before the
+  // cookie existed; honour it once and move it into the cookie.
   useEffect(() => {
-    let initial: Lang = navigator.language?.toLowerCase().startsWith("ar") ? "ar" : "en";
     try {
       const saved = localStorage.getItem(LANG_KEY);
-      if (saved === "ar" || saved === "en") initial = saved;
+      if ((saved === "ar" || saved === "en") && saved !== initialLang) setLang(saved);
     } catch {
-      /* private mode — the default is fine */
+      /* private mode — the server's choice stands */
     }
-    setLang(initial);
     setReady(true);
-  }, []);
+  }, [initialLang]);
 
   useEffect(() => {
     if (!ready) return;
@@ -59,6 +63,8 @@ export default function FeedbackForm({
     } catch {
       /* nothing to do */
     }
+    // The cookie is what lets the server render the right language next time.
+    document.cookie = `lsc_lang=${lang}; path=/; max-age=31536000; samesite=lax`;
     document.documentElement.lang = lang;
     document.documentElement.dir = rtl ? "rtl" : "ltr";
   }, [lang, rtl, ready]);
@@ -129,7 +135,6 @@ export default function FeedbackForm({
     lang, contactMethod, preferredTime, L,
   ]);
 
-  if (!ready) return <div className="min-h-screen bg-slate-50" />;
 
   // ------------------------------------------------------------ confirmation
   if (step === 3 && reference) {

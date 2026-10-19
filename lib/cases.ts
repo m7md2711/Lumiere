@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { db, VOICE_BUCKET } from "./supabase";
 import { categoryLabel } from "./i18n";
 import { clinicDateEnd, clinicDateStart, formatForCsv } from "./time";
@@ -25,27 +26,48 @@ export function priorityForCategory(category: Category): Priority {
 
 // ------------------------------------------------------------- reads
 
+/**
+ * Branches and their QR points change a few times a year but were read on
+ * every page view — including every patient scan. They are cached across
+ * requests now, tagged so any edit in the admin clears them immediately, with
+ * a five-minute ceiling as a backstop. Case data is never cached this way.
+ */
+export const BRANCHES_TAG = "branches";
+
+const fetchBranches = unstable_cache(
+  async (): Promise<Branch[]> => {
+    const { data, error } = await db().from("branches").select("*").order("code");
+    if (error) throw error;
+    return (data ?? []) as Branch[];
+  },
+  ["branches-v1"],
+  { tags: [BRANCHES_TAG], revalidate: 300 }
+);
+
 export const getBranches = cache(async function getBranches(): Promise<Branch[]> {
-  const { data, error } = await db().from("branches").select("*").order("code");
-  if (error) throw error;
-  return (data ?? []) as Branch[];
+  return fetchBranches();
 });
 
 export async function getBranchByCode(code: string): Promise<Branch | null> {
-  const { data } = await db()
-    .from("branches")
-    .select("*")
-    .eq("code", code.toUpperCase())
-    .maybeSingle();
-  return (data as Branch) ?? null;
+  // Served from the cached list rather than its own query.
+  const wanted = code.toUpperCase();
+  return (await getBranches()).find((b) => b.code === wanted) ?? null;
 }
 
+const fetchLocations = unstable_cache(
+  async (branchId?: string): Promise<QrLocation[]> => {
+    let q = db().from("qr_locations").select("*").order("code");
+    if (branchId) q = q.eq("branch_id", branchId);
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data ?? []) as QrLocation[];
+  },
+  ["locations-v1"],
+  { tags: [BRANCHES_TAG], revalidate: 300 }
+);
+
 export const getLocations = cache(async function getLocations(branchId?: string): Promise<QrLocation[]> {
-  let q = db().from("qr_locations").select("*").order("code");
-  if (branchId) q = q.eq("branch_id", branchId);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []) as QrLocation[];
+  return fetchLocations(branchId);
 });
 
 const CASE_SELECT =

@@ -1,5 +1,26 @@
 import type { Metadata, Viewport } from "next";
+import { Almarai, Josefin_Sans } from "next/font/google";
 import "./globals.css";
+
+/**
+ * Self-hosted at build time. These were a <link> to Google, which put a
+ * render-blocking request to another company's servers in front of every
+ * first paint — about 430ms measured on the patient form — and swapped the
+ * text in late, nudging the layout.
+ */
+const josefin = Josefin_Sans({
+  subsets: ["latin"],
+  weight: ["200", "300", "400", "500", "600"],
+  variable: "--font-josefin",
+  display: "swap",
+});
+
+const almarai = Almarai({
+  subsets: ["arabic"],
+  weight: ["300", "400", "700"],
+  variable: "--font-almarai",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Lumiere Skin Clinic — Your experience matters",
@@ -19,15 +40,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@200;300;400;500;600&family=Almarai:wght@300;400;700&display=swap"
-        />
-      </head>
+    <html lang="en" className={`${josefin.variable} ${almarai.variable}`}>
       <body className="min-h-screen">
         <script
           // Runs before paint: without it the page renders dark, then snaps.

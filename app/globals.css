@@ -131,7 +131,7 @@
     letter-spacing: 0.012em;
   }
 
-  :lang(ar), [dir="rtl"] { font-family: "Almarai", "Josefin Sans", system-ui, sans-serif; }
+  :lang(ar), [dir="rtl"] { font-family: var(--font-almarai), var(--font-josefin), system-ui, sans-serif; }
   [dir="rtl"] { letter-spacing: 0; }
 
   :focus-visible { @apply outline-none ring-2 ring-clinic-600 ring-offset-2 ring-offset-slate-50; }
