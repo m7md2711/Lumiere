@@ -8,9 +8,11 @@ import "./globals.css";
  * first paint — about 430ms measured on the patient form — and swapped the
  * text in late, nudging the layout.
  */
+// Only the weights the interface actually sets: 200 had no uses at all but
+// cost a download on every page. font-bold falls to 600, its nearest.
 const josefin = Josefin_Sans({
   subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600"],
   variable: "--font-josefin",
   display: "swap",
 });
