@@ -25,7 +25,11 @@ import {
   CALLCENTER_CODE, INTAKE_KEY, MANAGER_CODE, ensureInternalLocations, type IntakeCodes,
 } from "@/lib/sources";
 import { sendMail } from "@/lib/mailer";
-import { getEvidence, setEvidence, uploadEvidence } from "@/lib/evidence";
+import {
+  ALLOWED_TYPES, DOC_BUCKET, MAX_FILES_PER_CASE, MAX_FILES_PER_UPLOAD, MAX_FILE_BYTES,
+  addEvidenceFiles, ensureBucket, extensionFor, getEvidenceFiles, removeEvidenceFile,
+  type EvidenceFile,
+} from "@/lib/evidence";
 import { setServiceDetail } from "@/lib/service-detail";
 import { notifyClosed, notifyReadyForReview, notifyReminder } from "@/lib/notify";
 import { currentSession } from "@/lib/auth";
@@ -71,24 +75,10 @@ export async function changeStatus(formData: FormData): Promise<ActionResult> {
   const existing = await getCase(id);
   if (!existing) return { ok: false, error: "That case no longer exists." };
 
-  // Solving is a claim that the patient signed off; it needs the form.
-  const file = formData.get("evidence");
-  const hasNewFile = file instanceof File && file.size > 0;
-  const alreadyAttached = await getEvidence(id);
+  const attached = await getEvidenceFiles(id);
 
   const patch: Record<string, unknown> = { status };
 
-  if (hasNewFile) {
-    const up = await uploadEvidence(existing.ref, file as File);
-    if (!up.ok) return { ok: false, error: up.error };
-    await setEvidence(id, {
-      path: up.path,
-      name: up.name,
-      at: new Date().toISOString(),
-      by: session?.username ?? "unknown",
-    });
-    await addEvent(id, "evidence", `Signed complaint form attached: ${up.name}`);
-  }
 
   // A concern raised after a service asks who performed it and on what, so the
   // same technician or machine showing up repeatedly becomes visible.
@@ -118,7 +108,7 @@ export async function changeStatus(formData: FormData): Promise<ActionResult> {
   const fresh = await getCase(id);
   if (fresh) {
     if (status === "solved") {
-      void notifyReadyForReview(fresh, note, Boolean(hasNewFile || alreadyAttached)).catch(() => {});
+      void notifyReadyForReview(fresh, note, attached.length > 0).catch(() => {});
     }
     if (status === "closed") {
       void notifyClosed(fresh, note, Number(fresh.satisfaction ?? 0)).catch(() => {});
@@ -1038,5 +1028,117 @@ export async function mergeServiceCategories(): Promise<ActionResult> {
   await audit("category_merge", adminUser(), { detail: `${n} case${n === 1 ? "" : "s"} moved` });
   revalidatePath("/admin/cases");
   revalidatePath("/admin/dashboard");
+  return { ok: true };
+}
+
+
+// --------------------------------------------------- signed complaint forms
+
+export type UploadSlot = { path: string; signedUrl: string; name: string };
+export type PrepareResult = { ok: true; slots: UploadSlot[] } | { ok: false; error: string };
+
+/**
+ * Hands the browser one signed upload URL per file. The bytes then go straight
+ * to storage, never through this function — that is the point, since a phone
+ * photo of a form is routinely larger than a server action will accept.
+ */
+export async function prepareEvidenceUpload(
+  caseId: string,
+  files: { name: string; type: string; size: number }[]
+): Promise<PrepareResult> {
+  await assertCaseInScope(caseId);
+
+  if (files.length === 0) return { ok: false, error: "Choose at least one file." };
+  if (files.length > MAX_FILES_PER_UPLOAD) {
+    return { ok: false, error: `Up to ${MAX_FILES_PER_UPLOAD} files at a time.` };
+  }
+
+  const c = await getCase(caseId);
+  if (!c) return { ok: false, error: "That case no longer exists." };
+
+  const existing = await getEvidenceFiles(caseId);
+  if (existing.length + files.length > MAX_FILES_PER_CASE) {
+    return { ok: false, error: `A case can hold up to ${MAX_FILES_PER_CASE} files.` };
+  }
+
+  for (const f of files) {
+    if (!ALLOWED_TYPES.includes(f.type)) {
+      return { ok: false, error: `"${f.name}" is not a PDF or a photo.` };
+    }
+    if (f.size > MAX_FILE_BYTES) return { ok: false, error: `"${f.name}" is larger than 10 MB.` };
+    if (f.size === 0) return { ok: false, error: `"${f.name}" is empty.` };
+  }
+
+  await ensureBucket();
+  const stamp = Date.now();
+  const slots: UploadSlot[] = [];
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const rand = Math.random().toString(36).slice(2, 7);
+    const path = `${c.ref}/signed-form-${stamp}-${i + 1}-${rand}.${extensionFor(f.type)}`;
+    const { data, error } = await db().storage.from(DOC_BUCKET).createSignedUploadUrl(path);
+    if (error || !data) return { ok: false, error: "Could not prepare the upload. Try again." };
+    slots.push({ path, signedUrl: data.signedUrl, name: f.name });
+  }
+  return { ok: true, slots };
+}
+
+/**
+ * Records files the browser says it uploaded — but only those that are under
+ * this case's own folder and actually present in storage. A path for another
+ * case, or a file whose upload failed, is never written into the record.
+ */
+export async function recordEvidenceUpload(
+  caseId: string,
+  uploaded: { path: string; name: string; size: number; type: string }[]
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const session = await requireSession();
+  await assertCaseInScope(caseId);
+
+  const c = await getCase(caseId);
+  if (!c) return { ok: false, error: "That case no longer exists." };
+
+  const { data: listed } = await db().storage.from(DOC_BUCKET).list(c.ref, { limit: 1000 });
+  const present = new Set((listed ?? []).map((o) => `${c.ref}/${o.name}`));
+
+  const now = new Date().toISOString();
+  const good: EvidenceFile[] = uploaded
+    .filter((u) => u.path.startsWith(`${c.ref}/`) && present.has(u.path))
+    .map((u) => ({
+      path: u.path,
+      name: u.name.slice(0, 160),
+      size: u.size,
+      type: u.type,
+      at: now,
+      by: session.username,
+    }));
+
+  if (good.length === 0) return { ok: false, error: "None of the files arrived. Try again." };
+
+  await addEvidenceFiles(caseId, good);
+  await addEvent(
+    caseId,
+    "evidence",
+    good.length === 1
+      ? `Signed complaint form attached: ${good[0].name}`
+      : `${good.length} signed-form files attached: ${good.map((g) => g.name).join(", ")}`
+  );
+  refresh(caseId);
+  return { ok: true, count: good.length };
+}
+
+/** Removing a document is the administrator's call, and it is logged. */
+export async function removeEvidence(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const caseId = String(formData.get("id") ?? "");
+  const path = String(formData.get("path") ?? "");
+  if (!caseId || !path) return { ok: false, error: "Missing file." };
+
+  const gone = await removeEvidenceFile(caseId, path);
+  if (!gone) return { ok: false, error: "That file is no longer attached." };
+
+  await addEvent(caseId, "evidence", `Signed-form file removed by ${adminUser()}: ${gone.name}`);
+  await audit("evidence_removed", adminUser(), { detail: gone.name });
+  refresh(caseId);
   return { ok: true };
 }

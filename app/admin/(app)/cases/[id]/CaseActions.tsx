@@ -150,24 +150,11 @@ export default function CaseActions({
             ) : null}
 
             {EVIDENCE_PROMPT_STATUSES.includes(nextStatus) ? (
-              <div>
-                <label className="label" htmlFor="evidence">
-                  Complaint form signed by the patient{hasEvidence ? " (replace)" : " (optional)"}
-                </label>
-                <input
-                  id="evidence"
-                  name="evidence"
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/heic,image/webp"
-                  className="field py-2.5 text-sm file:mr-3 file:rounded-full file:border-0
-                             file:bg-clinic-600 file:px-3 file:py-1.5 file:text-xs file:text-ink"
-                />
-                <p className="mt-1.5 text-xs text-slate-500">
-                  PDF or a photo, up to 10 MB. Stored privately. Attach it when you have it —
-                  the case can be marked solved either way, and the administrator sees whether
-                  one is on file when they review.
-                </p>
-              </div>
+              <p className="text-xs text-slate-500">
+                {hasEvidence
+                  ? "The signed form is on file. Add more pages in “Signed complaint form” above."
+                  : "Attach the signed form in “Signed complaint form” above — several files if it has several pages. It is not required to save this."}
+              </p>
             ) : null}
             <div>
               <label className="label">

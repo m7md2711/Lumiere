@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { deleteEvidenceFor } from "./evidence";
+import { deleteEvidenceFor, downloadEvidence, evidenceFor } from "./evidence";
 import { deleteServiceDetailFor, serviceDetailsFor } from "./service-detail";
 import { db, VOICE_BUCKET } from "./supabase";
 import { casesToCsv } from "./cases";
@@ -133,6 +133,22 @@ export async function buildZip(rows: CaseWithBranch[]): Promise<ZipResult> {
 
   zip.file("cases.csv", casesToCsv(rows, await serviceDetailsFor(rows.map((r) => r.id))));
 
+  // Signed forms are the record of what the patient agreed to; they used to
+  // be deleted on archive without ever reaching the zip.
+  const forms = zip.folder("signed-forms");
+  const attached = await evidenceFor(rows.map((r) => r.id));
+  let formCount = 0;
+  for (const r of rows) {
+    const files = attached[r.id] ?? [];
+    for (let i = 0; i < files.length; i++) {
+      const bytes = await downloadEvidence(files[i].path);
+      if (!bytes) continue;
+      const ext = files[i].path.split(".").pop() || "bin";
+      forms?.file(`${r.ref}${files.length > 1 ? `-${i + 1}` : ""}.${ext}`, bytes);
+      formCount += 1;
+    }
+  }
+
   const audio = zip.folder("voice-notes");
   let voiceIncluded = 0;
   const voiceMissing: string[] = [];
@@ -161,7 +177,7 @@ export async function buildZip(rows: CaseWithBranch[]): Promise<ZipResult> {
     `Voice notes: ${voiceIncluded}`,
     voiceMissing.length ? `Voice notes that could not be read: ${voiceMissing.join(", ")}` : "",
     "",
-    "cases.csv holds every field. voice-notes/ is named by case reference.",
+    "cases.csv holds every field. voice-notes/ and signed-forms/ are named by case reference.",
   ].filter(Boolean);
   zip.file("README.txt", lines.join("\n"));
 

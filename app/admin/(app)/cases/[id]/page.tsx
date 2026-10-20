@@ -2,7 +2,9 @@ import AppLink from "@/components/AppLink";
 import { notFound } from "next/navigation";
 import { getEvents, relatedOpenCases, repeatCountFor, toWhatsApp } from "@/lib/cases";
 import RelatedCases from "@/components/RelatedCases";
-import { getEvidence, signedUrlFor } from "@/lib/evidence";
+import { getEvidenceFiles, signedUrlFor } from "@/lib/evidence";
+import EvidenceUploader from "@/components/EvidenceUploader";
+import RemoveEvidenceButton from "@/components/RemoveEvidenceButton";
 import { getServiceDetail } from "@/lib/service-detail";
 import { SERVICE_CONCERN, normalizeCategory } from "@/lib/types";
 import { currentSession } from "@/lib/auth";
@@ -27,7 +29,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   const [events, session, evidence, repeat, service, related] = await Promise.all([
     getEvents(c.id),
     currentSession(),
-    getEvidence(c.id),
+    getEvidenceFiles(c.id),
     repeatCountFor(c.mobile, c.id),
     getServiceDetail(c.id),
     relatedOpenCases(c.mobile, c.id),
@@ -35,7 +37,8 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   const isServiceConcern = normalizeCategory(c.category) === SERVICE_CONCERN;
 
   const isAdmin = session?.role === "admin";
-  const evidenceUrl = evidence ? await signedUrlFor(evidence.path) : null;
+  // One signed link per file, fetched together.
+  const evidenceLinks = await Promise.all(evidence.map((f) => signedUrlFor(f.path)));
   const wa = toWhatsApp(c.mobile);
 
   return (
@@ -140,20 +143,35 @@ export default async function CaseDetail({ params }: { params: { id: string } })
 
       <section className="card p-5">
         <h2 className="mb-3 text-xs uppercase tracking-label text-slate-500">
-          Signed complaint form
+          Signed complaint form{evidence.length > 1 ? ` · ${evidence.length} files` : ""}
         </h2>
-        {evidence && evidenceUrl ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <a href={evidenceUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
-              View {evidence.name}
-            </a>
-            <span className="text-xs text-slate-500">
-              Attached by {evidence.by} · {shortDate(evidence.at)}
-            </span>
-          </div>
+        {evidence.length > 0 ? (
+          <ul className="divide-y divide-slate-200">
+            {evidence.map((f, i) => (
+              <li key={f.path} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  {evidenceLinks[i] ? (
+                    <a
+                      href={evidenceLinks[i]!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate text-sm text-clinic-700 hover:underline"
+                    >
+                      {f.name}
+                    </a>
+                  ) : (
+                    <span className="block truncate text-sm text-slate-500">{f.name}</span>
+                  )}
+                  <span className="text-xs text-slate-500">
+                    {f.size ? `${(f.size / 1024 / 1024).toFixed(1)} MB · ` : ""}
+                    {f.by} · {shortDate(f.at)}
+                  </span>
+                </div>
+                {isAdmin ? <RemoveEvidenceButton caseId={c.id} path={f.path} name={f.name} /> : null}
+              </li>
+            ))}
+          </ul>
         ) : c.status === "solved" || c.status === "closed" ? (
-          // The branch has finished without one. Not blocked, but the person
-          // closing the case should see it rather than discover it later.
           <p className="alert-warn">
             No signed form on file, and this case is already marked{" "}
             {c.status === "solved" ? "solved" : "closed"}. Ask the branch for it if this
@@ -161,10 +179,12 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           </p>
         ) : (
           <p className="text-sm italic text-slate-400">
-            Nothing attached yet. The branch can add the form the patient signed at any
-            point — it is not required to mark the case solved.
+            Nothing attached yet. Add the form the patient signed whenever you have it — it is
+            not required to mark the case solved.
           </p>
         )}
+
+        <EvidenceUploader caseId={c.id} />
       </section>
 
       <CaseActions
@@ -174,7 +194,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
         refundStatus={c.refund_status}
         contactMethod={c.contact_method}
         isAdmin={Boolean(isAdmin)}
-        hasEvidence={Boolean(evidence)}
+        hasEvidence={evidence.length > 0}
         isServiceConcern={isServiceConcern}
         service={service ? { employee: service.employee, device: service.device } : null}
         related={related.map((r) => ({ id: r.id, ref: r.ref, status: r.status, created_at: r.created_at }))}
