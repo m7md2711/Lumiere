@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth";
 import { assertCaseInScope } from "@/lib/scope";
 import { validateNewPassword } from "@/lib/password";
-import { BRANCHES_TAG, addEvent, createCase, getCase, slaHoursFor } from "@/lib/cases";
+import { BRANCHES_TAG, addEvent, createCase, getCase, relatedOpenCases, slaHoursFor } from "@/lib/cases";
 import { statusLabel } from "@/lib/i18n";
 import { formatLongDateTime } from "@/lib/time";
 import {
@@ -297,6 +297,21 @@ export async function closeCase(formData: FormData): Promise<ActionResult> {
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // The patient's duplicates close with it, whichever way the primary ends.
+  const mergeIds = formData.getAll("merge_ids").map(String).filter(Boolean);
+  const merged = existingCase
+    ? await closeAlongside(
+        { id, ref: existingCase.ref, mobile: existingCase.mobile },
+        mergeIds,
+        adminUser(),
+        note
+      )
+    : [];
+  if (merged.length) {
+    await addEvent(id, "note", `Also closed ${merged.length} duplicate${merged.length === 1 ? "" : "s"} from the same patient: ${merged.join(", ")}.`);
+    await audit("cases_merged", adminUser(), { detail: `${existingCase?.ref} absorbed ${merged.join(", ")}` });
+  }
 
   if (!closingNow) {
     const rec = await setFollowUp(id, { at: followDate, note, setBy: adminUser() });
@@ -860,6 +875,47 @@ export async function createCallCentreLogin(): Promise<LoginsResult> {
 }
 
 
+// ----------------------------------------------------- close duplicates too
+
+/**
+ * Closes the same patient's other open cases alongside the one being closed.
+ * The ids arrive from the form, so each is re-checked here against the
+ * primary's mobile — a forged id for someone else's case is silently skipped,
+ * never closed.
+ */
+async function closeAlongside(
+  primary: { id: string; ref: string; mobile: string },
+  requested: string[],
+  by: string,
+  note: string
+): Promise<string[]> {
+  if (requested.length === 0) return [];
+  const eligible = await relatedOpenCases(primary.mobile, primary.id);
+  const allowed = new Set(eligible.map((c) => c.id));
+  const toClose = eligible.filter((c) => requested.includes(c.id) && allowed.has(c.id));
+  if (toClose.length === 0) return [];
+
+  const now = new Date().toISOString();
+  const { error } = await db()
+    .from("cases")
+    .update({
+      status: "closed",
+      closed_at: now,
+      resolution_note: `Closed together with ${primary.ref} — the same complaint from the same patient.${note ? ` ${note}` : ""}`,
+      closure_reason: "Duplicate of another case",
+    })
+    .in("id", toClose.map((c) => c.id));
+  if (error) throw error;
+
+  for (const c of toClose) {
+    // A merged case must not keep a follow-up reminder firing on its own.
+    await clearFollowUp(c.id);
+    await addEvent(c.id, "closed", `Closed together with ${primary.ref} by ${by} — same patient, same complaint.`);
+    revalidatePath(`/admin/cases/${c.id}`);
+  }
+  return toClose.map((c) => c.ref);
+}
+
 // ------------------------------------------------------------- follow-ups
 
 /** Push a case out to a new date, from the follow-up view. */
@@ -904,6 +960,18 @@ export async function closePermanently(formData: FormData): Promise<ActionResult
 
   await clearFollowUp(id);
   await addEvent(id, "closed", `Follow-up complete, closed for good. ${note}`);
+
+  const primary = await getCase(id);
+  const mergeIds = formData.getAll("merge_ids").map(String).filter(Boolean);
+  if (primary && mergeIds.length) {
+    const merged = await closeAlongside(
+      { id, ref: primary.ref, mobile: primary.mobile }, mergeIds, adminUser(), note
+    );
+    if (merged.length) {
+      await addEvent(id, "note", `Also closed ${merged.length} duplicate${merged.length === 1 ? "" : "s"}: ${merged.join(", ")}.`);
+      await audit("cases_merged", adminUser(), { detail: `${primary.ref} absorbed ${merged.join(", ")}` });
+    }
+  }
 
   const fresh = await getCase(id);
   if (fresh) void notifyClosed(fresh, note, Number(fresh.satisfaction ?? 0)).catch(() => {});

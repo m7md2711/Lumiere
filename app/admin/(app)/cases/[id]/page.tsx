@@ -1,6 +1,7 @@
 import AppLink from "@/components/AppLink";
 import { notFound } from "next/navigation";
-import { getEvents, repeatCountFor, toWhatsApp } from "@/lib/cases";
+import { getEvents, relatedOpenCases, repeatCountFor, toWhatsApp } from "@/lib/cases";
+import RelatedCases from "@/components/RelatedCases";
 import { getEvidence, signedUrlFor } from "@/lib/evidence";
 import { getServiceDetail } from "@/lib/service-detail";
 import { SERVICE_CONCERN, normalizeCategory } from "@/lib/types";
@@ -23,12 +24,13 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   // the case is still `new`.
   await markOpened(c.id);
 
-  const [events, session, evidence, repeat, service] = await Promise.all([
+  const [events, session, evidence, repeat, service, related] = await Promise.all([
     getEvents(c.id),
     currentSession(),
     getEvidence(c.id),
     repeatCountFor(c.mobile, c.id),
     getServiceDetail(c.id),
+    relatedOpenCases(c.mobile, c.id),
   ]);
   const isServiceConcern = normalizeCategory(c.category) === SERVICE_CONCERN;
 
@@ -80,6 +82,8 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           </a>
         </div>
       </header>
+
+      <RelatedCases cases={related} />
 
       <section className="card p-5">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -173,6 +177,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
         hasEvidence={Boolean(evidence)}
         isServiceConcern={isServiceConcern}
         service={service ? { employee: service.employee, device: service.device } : null}
+        related={related.map((r) => ({ id: r.id, ref: r.ref, status: r.status, created_at: r.created_at }))}
       />
 
       <section className="card p-5">

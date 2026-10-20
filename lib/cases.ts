@@ -136,6 +136,32 @@ export async function repeatCountFor(mobile: string, excludeId?: string): Promis
   return (count ?? 0) + (excludeId ? 1 : 0);
 }
 
+/**
+ * The same patient's other cases that are still open — usually the same
+ * complaint sent again because the first felt unanswered. Closing one offers
+ * to close these with it.
+ */
+export type RelatedCase = {
+  id: string;
+  ref: string;
+  category: string;
+  status: string;
+  created_at: string;
+  description: string | null;
+};
+
+export async function relatedOpenCases(mobile: string, excludeId: string): Promise<RelatedCase[]> {
+  if (!mobile) return [];
+  const { data } = await db()
+    .from("cases")
+    .select("id, ref, category, status, created_at, description")
+    .eq("mobile", mobile)
+    .neq("id", excludeId)
+    .neq("status", "closed")
+    .order("created_at", { ascending: true });
+  return (data ?? []) as RelatedCase[];
+}
+
 /** Repeat counts for a whole list, in one query rather than one per row. */
 export async function repeatCounts(mobiles: string[]): Promise<Record<string, number>> {
   const unique = Array.from(new Set(mobiles.filter(Boolean)));

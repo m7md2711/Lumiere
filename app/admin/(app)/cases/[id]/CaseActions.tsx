@@ -24,7 +24,7 @@ const tabs: { id: Tab; label: string }[] = [
 
 export default function CaseActions({
   id, status, priority, refundStatus, contactMethod, isAdmin, hasEvidence,
-  isServiceConcern, service,
+  isServiceConcern, service, related,
 }: {
   id: string;
   status: Status;
@@ -35,6 +35,7 @@ export default function CaseActions({
   hasEvidence: boolean;
   isServiceConcern: boolean;
   service: { employee: string; device: string } | null;
+  related: { id: string; ref: string; status: string; created_at: string }[];
 }) {
   const visibleTabs = isAdmin ? tabs : tabs.filter((x) => x.id !== "close" && x.id !== "remind");
   const [tab, setTab] = useState<Tab>("status");
@@ -397,6 +398,27 @@ export default function CaseActions({
             </div>
           ) : null}
 
+
+          {related.length > 0 ? (
+            <fieldset className="rounded-xl border border-slate-300 bg-slate-200/60 p-3">
+              <legend className="px-1 text-xs uppercase tracking-label text-slate-500">
+                Close the same patient&rsquo;s other cases too
+              </legend>
+              <p className="mb-2 text-xs text-slate-500">
+                Ticked by default, since it is usually one complaint sent more than once. Untick
+                any that is about something different — it stays open.
+              </p>
+              <div className="space-y-1.5">
+                {related.map((r) => (
+                  <label key={r.id} className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-800">
+                    <input type="checkbox" name="merge_ids" value={r.id} defaultChecked className="h-4 w-4" />
+                    <span className="tabular text-clinic-700">{r.ref}</span>
+                    <span className="text-xs text-slate-500">{statusLabel(r.status)}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
           <div>
             <label className="label">Resolution note</label>
             <textarea

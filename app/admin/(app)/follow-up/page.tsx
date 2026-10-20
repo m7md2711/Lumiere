@@ -2,6 +2,7 @@ import AppLink from "@/components/AppLink";
 import { currentSession } from "@/lib/auth";
 import { listCasesScoped } from "@/lib/scope";
 import { followUpsFor, dueLabel } from "@/lib/followup";
+import { relatedOpenCases } from "@/lib/cases";
 import { categoryLabel } from "@/lib/i18n";
 import { sourceOf, sourceShort } from "@/lib/sources";
 import { StatusPill, shortDate } from "@/components/Pills";
@@ -19,7 +20,11 @@ export default async function FollowUpPage() {
   if (!session) return null;
 
   const cases = await listCasesScoped({ status: "follow_up" }, 500);
-  const recs = cases.length ? await followUpsFor(cases.map((c) => c.id)) : {};
+  const [recs, relatedLists] = await Promise.all([
+    cases.length ? followUpsFor(cases.map((c) => c.id)) : Promise.resolve({} as Record<string, never>),
+    Promise.all(cases.map((c) => relatedOpenCases(c.mobile, c.id))),
+  ]);
+  const relatedOf = Object.fromEntries(cases.map((c, i) => [c.id, relatedLists[i]]));
 
   const withDates = cases
     .map((c) => ({ c, rec: recs[c.id] }))
@@ -117,10 +122,19 @@ export default async function FollowUpPage() {
                 </div>
               </dl>
 
+              {relatedOf[c.id]?.length ? (
+                <p className="alert-warn mt-3">
+                  This patient has {relatedOf[c.id].length} other open case
+                  {relatedOf[c.id].length === 1 ? "" : "s"}:{" "}
+                  {relatedOf[c.id].map((r) => r.ref).join(", ")}.
+                </p>
+              ) : null}
+
               <FollowUpActions
                 id={c.id}
                 mobile={c.mobile}
                 isAdmin={session.role === "admin"}
+                related={(relatedOf[c.id] ?? []).map((r) => ({ id: r.id, ref: r.ref }))}
               />
             </article>
           );

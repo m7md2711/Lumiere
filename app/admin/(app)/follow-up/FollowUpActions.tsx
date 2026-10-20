@@ -6,11 +6,12 @@ import { closePermanently, rescheduleFollowUp } from "../actions";
 import { toWhatsApp } from "@/lib/phone";
 
 export default function FollowUpActions({
-  id, mobile, isAdmin,
+  id, mobile, isAdmin, related,
 }: {
   id: string;
   mobile: string;
   isAdmin: boolean;
+  related: { id: string; ref: string }[];
 }) {
   const [open, setOpen] = useState<"none" | "again" | "done">("none");
   const [msg, setMsg] = useState<string | null>(null);
@@ -74,6 +75,19 @@ export default function FollowUpActions({
           <input type="hidden" name="id" value={id} />
           <input name="note" className="field py-2 text-sm" required
                  placeholder="What did the follow-up find?" />
+          {related.length > 0 ? (
+            <div className="rounded-xl border border-slate-300 bg-slate-200/60 p-2.5">
+              <div className="mb-1.5 text-xs text-slate-500">
+                Close this patient&rsquo;s other open cases too — untick any that is different:
+              </div>
+              {related.map((r) => (
+                <label key={r.id} className="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
+                  <input type="checkbox" name="merge_ids" value={r.id} defaultChecked className="h-4 w-4" />
+                  <span className="tabular text-clinic-700">{r.ref}</span>
+                </label>
+              ))}
+            </div>
+          ) : null}
           <button className="btn btn-primary py-2 text-xs" disabled={pending} aria-busy={pending}>
             {pending ? "Closing…" : "Close for good"}
           </button>
