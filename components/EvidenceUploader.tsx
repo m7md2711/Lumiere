@@ -21,7 +21,13 @@ type Row = {
  * progress bar, so a slow phone connection shows movement instead of a frozen
  * button. Only files that actually arrive are recorded against the case.
  */
-export default function EvidenceUploader({ caseId }: { caseId: string }) {
+export default function EvidenceUploader({
+  caseId,
+  idSuffix = "panel",
+}: {
+  caseId: string;
+  idSuffix?: string;
+}) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -130,10 +136,10 @@ export default function EvidenceUploader({ caseId }: { caseId: string }) {
 
   return (
     <div className="mt-4 border-t border-slate-200 pt-4">
-      <label className="label" htmlFor={`evidence-${caseId}`}>Add files</label>
+      <label className="label" htmlFor={`evidence-${caseId}-${idSuffix}`}>Add files</label>
       <input
         ref={input}
-        id={`evidence-${caseId}`}
+        id={`evidence-${caseId}-${idSuffix}`}
         type="file"
         multiple
         accept={ACCEPT}

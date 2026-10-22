@@ -22,6 +22,7 @@ export async function GET(req: Request) {
     to: p.get("to") ?? undefined,
     q: p.get("q") ?? undefined,
     overdue: p.get("overdue") ?? undefined,
+    source: p.get("source") ?? undefined,
   };
 
   const rows = await listCasesScoped(filters, 5000);

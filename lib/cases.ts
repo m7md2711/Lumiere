@@ -85,37 +85,129 @@ export type CaseFilters = {
   overdue?: string;
 };
 
+/** A filter value is a comma-separated list, so one filter can hold several choices. */
+export function filterList(v?: string): string[] {
+  return v ? v.split(",").map((s) => s.trim()).filter(Boolean) : [];
+}
+
+/** Characters that would break PostgREST's or() syntax are dropped, not escaped. */
+function cleanSearch(q?: string): string {
+  return (q ?? "").replace(/[%,()*\\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export async function listCases(f: CaseFilters, limit = 300): Promise<CaseWithBranch[]> {
   let q = db().from("cases").select(CASE_SELECT).order("created_at", { ascending: false });
 
-  if (f.branch) q = q.eq("branch_id", f.branch);
-  if (f.status) q = q.eq("status", f.status);
-  if (f.category) q = q.eq("category", f.category);
-  if (f.priority) q = q.eq("priority", f.priority);
+  // Every filter accepts several values; within one filter they widen the
+  // result (this branch OR that one), across filters they narrow it.
+  const branches = filterList(f.branch);
+  const statuses = filterList(f.status);
+  const priorities = filterList(f.priority);
+  let categories = filterList(f.category);
+  // The merged topic still has to find cases stored under the old names.
+  if (categories.includes("concern")) categories = [...categories, "treatment", "medical"];
+
+  if (branches.length) q = q.in("branch_id", branches);
+  if (statuses.length) q = q.in("status", statuses);
+  if (categories.length) q = q.in("category", categories);
+  if (priorities.length) q = q.in("priority", priorities);
+
   // Date filters mean the clinic's day, not the server's UTC one.
   if (f.from) q = q.gte("created_at", clinicDateStart(f.from).toISOString());
   if (f.to) q = q.lte("created_at", clinicDateEnd(f.to).toISOString());
-  if (f.q) {
-    const s = f.q.replace(/[%,()]/g, " ").trim();
-    if (s) q = q.or(`ref.ilike.%${s}%,patient_name.ilike.%${s}%,mobile.ilike.%${s}%`);
+
+  const s = cleanSearch(f.q);
+  if (s) {
+    // Search reaches the case's own text and everything written on its
+    // timeline — notes, contact outcomes, closure notes — so "no answer" or a
+    // technician's name finds every case it appears in.
+    const { data: hits } = await db()
+      .from("case_events")
+      .select("case_id")
+      .ilike("message", `%${s}%`)
+      .limit(1000);
+    const fromNotes = Array.from(new Set(((hits ?? []) as { case_id: string }[]).map((h) => h.case_id)));
+
+    const parts = [
+      `ref.ilike.%${s}%`,
+      `patient_name.ilike.%${s}%`,
+      `mobile.ilike.%${s}%`,
+      `description.ilike.%${s}%`,
+      `resolution_note.ilike.%${s}%`,
+    ];
+    if (fromNotes.length) parts.push(`id.in.(${fromNotes.join(",")})`);
+    q = q.or(parts.join(","));
   }
 
   const { data, error } = await q.limit(limit);
   if (error) throw error;
 
   let rows = (data ?? []) as unknown as CaseWithBranch[];
-  if (f.source) {
-    // "internal" is both staff channels together; otherwise an exact intake point.
-    const wanted = f.source === "internal" ? ["MGR", "CC"] : [f.source];
-    rows = rows.filter((c) => wanted.includes(c.qr_locations?.code ?? ""));
+
+  // Intake point lives on the joined location, so it is matched here.
+  const sources = filterList(f.source);
+  if (sources.length) {
+    const internal = ["MGR", "CC"];
+    rows = rows.filter((c) => {
+      const code = c.qr_locations?.code ?? "";
+      return sources.some((src) =>
+        src === "internal" ? internal.includes(code)
+        : src === "patient" ? !internal.includes(code)
+        : src === code
+      );
+    });
   }
   if (f.overdue === "1") {
     const now = Date.now();
-    rows = rows.filter(
-      (c) => c.status !== "closed" && new Date(c.sla_due_at).getTime() < now
-    );
+    rows = rows.filter((c) => c.status !== "closed" && c.status !== "follow_up" && new Date(c.sla_due_at).getTime() < now);
   }
   return rows;
+}
+
+/**
+ * Where the search text was found in each case, so the list can show why a
+ * case matched — a reference match needs no explanation, a note match does.
+ */
+export async function searchSnippets(
+  q: string,
+  rows: CaseWithBranch[]
+): Promise<Record<string, { where: string; text: string }>> {
+  const s = cleanSearch(q);
+  if (!s || rows.length === 0) return {};
+  const needle = s.toLowerCase();
+  const out: Record<string, { where: string; text: string }> = {};
+
+  const around = (text: string) => {
+    const i = text.toLowerCase().indexOf(needle);
+    if (i < 0) return text.slice(0, 120);
+    const start = Math.max(0, i - 45);
+    const end = Math.min(text.length, i + needle.length + 60);
+    return `${start > 0 ? "…" : ""}${text.slice(start, end)}${end < text.length ? "…" : ""}`;
+  };
+
+  const needEvents: string[] = [];
+  for (const c of rows) {
+    const plain = [c.ref, c.patient_name, c.mobile].some((v) => (v ?? "").toLowerCase().includes(needle));
+    if (plain) continue;
+    if ((c.description ?? "").toLowerCase().includes(needle)) out[c.id] = { where: "Patient wrote", text: around(c.description!) };
+    else if ((c.resolution_note ?? "").toLowerCase().includes(needle)) out[c.id] = { where: "Resolution", text: around(c.resolution_note!) };
+    else needEvents.push(c.id);
+  }
+
+  if (needEvents.length) {
+    const { data } = await db()
+      .from("case_events")
+      .select("case_id, type, message")
+      .in("case_id", needEvents)
+      .ilike("message", `%${s}%`)
+      .order("created_at", { ascending: false });
+    for (const e of (data ?? []) as { case_id: string; type: string; message: string }[]) {
+      if (out[e.case_id]) continue;
+      const where = e.type === "contact" ? "Contact log" : e.type === "note" ? "Note" : "Timeline";
+      out[e.case_id] = { where, text: around(e.message) };
+    }
+  }
+  return out;
 }
 
 export async function getCase(id: string): Promise<CaseWithBranch | null> {

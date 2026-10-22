@@ -1,5 +1,5 @@
 import AppLink from "@/components/AppLink";
-import { getBranches, repeatCounts, type CaseFilters } from "@/lib/cases";
+import { getBranches, repeatCounts, searchSnippets, type CaseFilters } from "@/lib/cases";
 import { listCasesScoped, isAdminSession } from "@/lib/scope";
 import { categoryLabel, priorityLabel, statusLabel } from "@/lib/i18n";
 import { CATEGORIES, PRIORITIES, STATUSES, isOverdue } from "@/lib/types";
@@ -31,9 +31,10 @@ export default async function CasesPage({
   ]);
   // One query for the whole page rather than one per row.
   // Both depend on the list but not on each other, so they go together.
-  const [repeats, withForm] = await Promise.all([
+  const [repeats, withForm, snippets] = await Promise.all([
     repeatCounts(cases.map((c) => c.mobile)),
     evidencePresence(cases.filter((c) => c.status === "solved").map((c) => c.id)),
+    filters.q ? searchSnippets(filters.q, cases) : Promise.resolve({} as Record<string, { where: string; text: string }>),
   ]);
   const repeatOf = (m: string) => repeats[m] ?? 1;
   const qs = new URLSearchParams(
@@ -48,7 +49,7 @@ export default async function CasesPage({
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Cases</h1>
           <p className="text-sm text-slate-500">
-            {cases.length} shown
+            {cases.length} {filters.q || Object.values(filters).some(Boolean) ? "matching" : "shown"}
             {overdueCount ? ` · ${overdueCount} overdue` : ""}
           </p>
         </div>
@@ -72,7 +73,7 @@ export default async function CasesPage({
         categories={CATEGORIES.map((c) => ({ v: c, label: categoryLabel(c, "en") }))}
         priorities={PRIORITIES.map((p) => ({ v: p, label: priorityLabel(p) }))}
         sources={[
-          { v: "internal", label: "Logged by staff (either)" },
+          { v: "patient", label: "Patient (QR or link)" },
           { v: "MGR", label: "Branch manager" },
           { v: "CC", label: "Call centre" },
         ]}
@@ -100,6 +101,12 @@ export default async function CasesPage({
             <div className="mt-0.5 text-xs text-slate-500">
               {categoryLabel(c.category, "en")} · {c.branches?.name_en ?? "—"}
             </div>
+            {snippets[c.id] ? (
+              <p className="mt-2 rounded-lg bg-slate-200/60 px-2.5 py-1.5 text-xs text-slate-600" dir="auto">
+                <span className="me-1 uppercase tracking-label text-clinic-700">{snippets[c.id].where}</span>
+                {snippets[c.id].text}
+              </p>
+            ) : null}
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               <PriorityPill priority={c.priority} />
               {isOverdue(c) ? <OverduePill /> : null}
@@ -172,6 +179,12 @@ export default async function CasesPage({
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {categoryLabel(c.category, "en")}
+                  {snippets[c.id] ? (
+                    <div className="mt-1 max-w-sm text-xs text-slate-500" dir="auto">
+                      <span className="me-1 uppercase tracking-label text-clinic-700">{snippets[c.id].where}</span>
+                      {snippets[c.id].text}
+                    </div>
+                  ) : null}
                   {c.voice_url ? (
                     <span title="Has a voice note" className="ms-1 inline-block align-text-bottom text-clinic-600">
                       <IconMic className="h-4 w-4" />

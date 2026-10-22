@@ -7,6 +7,7 @@ import {
   escalate, logContact, markRefundProcessed, sendCaseReminder, type ActionResult,
 } from "../../actions";
 import { statusLabel } from "@/lib/i18n";
+import EvidenceUploader from "@/components/EvidenceUploader";
 import { BRANCH_STATUSES, EVIDENCE_PROMPT_STATUSES, NOTE_REQUIRED_STATUSES, PRIORITIES, STATUSES } from "@/lib/types";
 import type { Priority, Status } from "@/lib/types";
 
@@ -150,11 +151,17 @@ export default function CaseActions({
             ) : null}
 
             {EVIDENCE_PROMPT_STATUSES.includes(nextStatus) ? (
-              <p className="text-xs text-slate-500">
-                {hasEvidence
-                  ? "The signed form is on file. Add more pages in “Signed complaint form” above."
-                  : "Attach the signed form in “Signed complaint form” above — several files if it has several pages. It is not required to save this."}
-              </p>
+              <div className="rounded-xl border border-slate-300 bg-slate-200/60 p-3">
+                <div className="text-xs uppercase tracking-label text-slate-500">
+                  Complaint form signed by the patient — optional
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {hasEvidence
+                    ? "Already on file. Add more pages here if there are any."
+                    : "Upload it now, or later from the signed-form panel above."}
+                </p>
+                <EvidenceUploader caseId={id} idSuffix="status" />
+              </div>
             ) : null}
             <div>
               <label className="label">
