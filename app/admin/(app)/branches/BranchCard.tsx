@@ -105,7 +105,7 @@ export default function BranchCard({
                   </form>
                   <form onSubmit={submit(deleteLocation)} className="mt-2">
                     <input type="hidden" name="id" value={l.id} />
-                    <button className="text-xs font-medium text-rose-600 hover:underline" disabled={pending} aria-busy={pending}>
+                    <button className="text-xs font-medium text-[rgb(var(--crit-fg))] hover:underline" disabled={pending} aria-busy={pending}>
                       Remove this location
                     </button>
                   </form>

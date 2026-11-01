@@ -3,95 +3,113 @@
 @tailwind utilities;
 
 /* ============================================================
-   Palettes. Dark is the brand's own and stays the default; light
-   is the same identity on paper rather than an inversion — gold
-   darkens so it still reads, the ground warms rather than going
-   pure white.
+   Palettes. Dark is the brand's own and stays the default.
+
+   Dark is deliberately spare: true black surfaces, gold frames, and
+   colour carried by the type — white headings, light-grey body, gold
+   labels — rather than by coloured fills. Charts use a gold-and-
+   neutral ramp so a page reads as one palette.
+
+   Light is the same identity on paper with the contrast turned up:
+   white cards on a slightly darker ground, framed in a visible gold
+   line, near-black type, gold deep enough to read as text.
    ============================================================ */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --s-50:   8   8   8;    /* Midnight — page ground */
-  --s-100: 26  26  26;    /* Soft Noir — cards */
-  --s-200: 38  38  38;    /* borders, inputs */
-  --s-300: 58  50  38;
-  --s-400: 110 100  80;
-  --s-500: 138 115  64;   /* Warm Bronze — muted text */
-  --s-600: 168 147 100;
-  --s-700: 201 191 168;
-  --s-800: 227 220 203;
-  --s-900: 241 236 224;   /* primary text */
+  --s-50:   0   0   0;    /* page ground — true black */
+  --s-100: 10  10  10;    /* cards */
+  --s-200: 24  24  24;    /* fills: tracks, hovers, insets */
+  --s-300: 38  38  38;
+  --s-400: 112 112 112;   /* placeholders, faint */
+  --s-500: 150 150 150;   /* muted text */
+  --s-600: 178 178 178;
+  --s-700: 205 205 205;   /* secondary text */
+  --s-800: 228 228 228;   /* body */
+  --s-900: 255 255 255;   /* headings, figures */
   --s-950: 255 255 255;
 
-  --c-50:   23  19  10;
-  --c-100:  36  29  15;
-  --c-200:  58  47  24;
-  --c-300: 107  90  46;
-  --c-400: 138 115  64;
+  --l-100:  58  49  26;   /* hairline dividers inside a card */
+  --l-200: 118  98  46;   /* card frames */
+  --l-300: 160 134  64;   /* fields, outline buttons */
+
+  --c-50:   20  16   6;
+  --c-100:  32  26  11;
+  --c-200:  56  46  20;
+  --c-300: 118  98  46;
+  --c-400: 138 115  64;   /* Warm Bronze */
   --c-500: 168 140  74;
-  --c-600: 201 168  76;   /* Lumiere Gold — the accent */
-  --c-700: 217 190 110;
-  --c-800: 228 204 138;
-  --c-900: 239 220 168;
-  --c-950: 247 235 201;
+  --c-600: 201 168  76;   /* Lumiere Gold */
+  --c-700: 220 192 112;   /* gold as type */
+  --c-800: 232 210 148;
+  --c-900: 242 226 182;
+  --c-950: 250 240 212;
 
-  --on-gold: 8 8 8;
+  --on-gold: 0 0 0;
 
-  --ok-bg:   6  48  37;  --ok-fg:  110 231 183;  --ok-ring:  6  78  59;
-  --warn-bg: 50 30  3;   --warn-fg: 252 211  77; --warn-ring: 87 52  6;
-  --crit-bg: 60 16 16;   --crit-fg: 252 165 165; --crit-ring: 95 25 25;
-  --info-bg:  8 40 62;   --info-fg: 125 211 252; --info-ring: 12 61 92;
-  --hint-bg: 35 24 60;   --hint-fg: 196 181 253; --hint-ring: 54 38 90;
-  --flat-bg: 38 38 38;   --flat-fg: 138 115  64; --flat-ring: 58 50 38;
+  /* Status reads by the colour of its words and outline; the fill stays
+     black. Only good, warning and critical keep a hue — the rest are
+     white, champagne or grey. */
+  --ok-bg:    4  16  10; --ok-fg:   120 224 168; --ok-ring:   40 112  78;
+  --warn-bg: 20  15   3; --warn-fg: 240 196  92; --warn-ring: 120  92  30;
+  --crit-bg: 24   6   6; --crit-fg: 255 140 140; --crit-ring: 140  48  48;
+  --info-bg: 12  12  12; --info-fg: 240 240 240; --info-ring:  96  96  96;
+  --hint-bg: 16  13   6; --hint-fg: 236 216 164; --hint-ring: 112  96  56;
+  --flat-bg: 12  12  12; --flat-fg: 160 160 160; --flat-ring:  64  64  64;
 
-  --shadow-card: 0 1px 3px rgb(0 0 0 / .7), 0 0 0 1px rgb(201 168 76 / .08);
-  --shadow-lift: 0 10px 28px rgb(0 0 0 / .55);
-  /* Chart palette — gold leads; the rest are distinct at a glance. */
-  --p1: 201 168  76;  --p2:  96 172 232;  --p3: 160 140 246;  --p4:  84 196 142;
-  --p5: 240 162  78;  --p6: 232 108 126;  --p7:  70 196 196;  --p8: 168 147 100;
+  --shadow-card: none;
+  --shadow-lift: 0 0 0 1px rgb(201 168 76), 0 14px 32px rgb(0 0 0 / .9);
+  /* Chart ramp — gold, white, bronze, champagne, greys; one muted rust
+     for the things that need attention. */
+  --p1: 201 168  76;  --p2: 240 240 240;  --p3: 138 115  64;  --p4: 236 216 164;
+  --p5: 120 120 120;  --p6: 200 100  80;  --p7: 184 184 184;  --p8:  92  78  44;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --s-50:  250 248 244;   /* warm paper */
-  --s-100: 255 255 255;   /* cards */
-  --s-200: 234 228 217;   /* borders */
-  --s-300: 213 203 186;
-  --s-400: 150 138 117;
-  --s-500: 122 102  58;   /* muted */
-  --s-600:  92  77  44;
-  --s-700:  62  53  34;
-  --s-800:  42  36  26;
-  --s-900:  26  22  18;   /* primary text */
-  --s-950:   0   0   0;
+    --s-50:  244 242 237;   /* paper, a step down so white cards stand off it */
+    --s-100: 255 255 255;   /* cards */
+    --s-200: 236 232 223;   /* fills */
+    --s-300: 219 212 198;
+    --s-400: 118 110  96;   /* placeholders */
+    --s-500:  86  78  66;   /* muted text */
+    --s-600:  62  56  47;
+    --s-700:  42  38  32;
+    --s-800:  26  23  19;   /* body */
+    --s-900:  10  10  10;   /* headings */
+    --s-950:   0   0   0;
 
-  --c-50:  253 248 234;
-  --c-100: 248 239 214;
-  --c-200: 237 223 180;
-  --c-300: 212 189 125;
-  --c-400: 176 145  63;
-  --c-500: 158 130  56;
-  --c-600: 201 168  76;   /* the accent stays the brand's gold */
-  --c-700: 133 110  50;   /* dark enough to read as type on paper */
-  --c-800: 101  84  38;
-  --c-900:  74  63  40;
-  --c-950:  42  36  26;
+    --l-100: 226 218 200;   /* hairline dividers */
+    --l-200: 200 182 136;   /* card frames */
+    --l-300: 160 138  84;   /* fields, outline buttons */
 
-  --on-gold: 8 8 8;
+    --c-50:  252 246 228;
+    --c-100: 246 236 205;
+    --c-200: 232 214 160;
+    --c-300: 196 168  92;
+    --c-400: 164 133  52;
+    --c-500: 146 117  42;
+    --c-600: 201 168  76;   /* the brand gold, for fills */
+    --c-700: 120  94  30;   /* gold as type: 5.6:1 on white */
+    --c-800:  92  72  22;
+    --c-900:  66  52  18;
+    --c-950:  38  30  12;
 
-  --ok-bg:  233 250 242; --ok-fg:   17 94 70;   --ok-ring: 190 232 214;
-  --warn-bg:254 247 224; --warn-fg: 124 74  7;  --warn-ring: 240 219 160;
-  --crit-bg:254 236 236; --crit-fg: 150 32 32;  --crit-ring: 243 199 199;
-  --info-bg: 234 245 254; --info-fg: 23  78 120; --info-ring: 191 222 245;
-  --hint-bg: 243 238 255; --hint-fg: 76  40 140; --hint-ring: 215 203 247;
-  --flat-bg: 240 236 228; --flat-fg: 122 102 58; --flat-ring: 213 203 186;
+    --on-gold: 8 8 8;
 
-  --shadow-card: 0 1px 2px rgb(42 36 26 / .06), 0 0 0 1px rgb(42 36 26 / .05);
-  --shadow-lift: 0 10px 28px rgb(42 36 26 / .12);
-  --p1: 168 134  44;  --p2:  37 118 190;  --p3: 112  86 212;  --p4:  22 148  94;
-  --p5: 206 118  28;  --p6: 200  58  86;  --p7:  18 138 140;  --p8: 122 102  58;
+    --ok-bg:  230 248 238; --ok-fg:   10  92  58; --ok-ring:  120 196 160;
+    --warn-bg:254 244 214; --warn-fg: 120  70   0; --warn-ring: 222 176  80;
+    --crit-bg:254 232 232; --crit-fg: 160  20  20; --crit-ring: 230 140 140;
+    --info-bg:232 242 252; --info-fg:  16  70 128; --info-ring: 130 176 222;
+    --hint-bg:242 236 255; --hint-fg:  80  36 150; --hint-ring: 180 160 234;
+    --flat-bg:240 238 233; --flat-fg:  70  64  54; --flat-ring: 190 182 166;
+
+    --shadow-card: 0 1px 2px rgb(20 16 8 / .07);
+    --shadow-lift: 0 0 0 1px rgb(160 138 84), 0 12px 28px rgb(20 16 8 / .14);
+    --p1: 164 128  30;  --p2:  28 106 186;  --p3: 106  76 210;  --p4:  14 140  86;
+    --p5: 204 110  14;  --p6: 196  44  72;  --p7:  10 128 132;  --p8:  86  78  66;
 }
 
 /* With no explicit choice the viewer's own preference decides. */
@@ -99,27 +117,47 @@
   :root:not([data-theme="dark"]) {
     color-scheme: light;
 
-    --s-50:  250 248 244;  --s-100: 255 255 255; --s-200: 234 228 217;
-    --s-300: 213 203 186;  --s-400: 150 138 117; --s-500: 122 102  58;
-    --s-600:  92  77  44;  --s-700:  62  53  34; --s-800:  42  36  26;
-    --s-900:  26  22  18;  --s-950:   0   0   0;
+    --s-50:  244 242 237;   /* paper, a step down so white cards stand off it */
+    --s-100: 255 255 255;   /* cards */
+    --s-200: 236 232 223;   /* fills */
+    --s-300: 219 212 198;
+    --s-400: 118 110  96;   /* placeholders */
+    --s-500:  86  78  66;   /* muted text */
+    --s-600:  62  56  47;
+    --s-700:  42  38  32;
+    --s-800:  26  23  19;   /* body */
+    --s-900:  10  10  10;   /* headings */
+    --s-950:   0   0   0;
 
-    --c-50:  253 248 234;  --c-100: 248 239 214; --c-200: 237 223 180;
-    --c-300: 212 189 125;  --c-400: 176 145  63; --c-500: 158 130  56;
-    --c-600: 201 168  76;  --c-700: 133 110  50; --c-800: 101  84  38;
-    --c-900:  74  63  40;  --c-950:  42  36  26;
+    --l-100: 226 218 200;   /* hairline dividers */
+    --l-200: 200 182 136;   /* card frames */
+    --l-300: 160 138  84;   /* fields, outline buttons */
 
-    --ok-bg:  233 250 242; --ok-fg:   17 94 70;   --ok-ring: 190 232 214;
-    --warn-bg:254 247 224; --warn-fg: 124 74  7;  --warn-ring: 240 219 160;
-    --crit-bg:254 236 236; --crit-fg: 150 32 32;  --crit-ring: 243 199 199;
-    --info-bg: 234 245 254; --info-fg: 23  78 120; --info-ring: 191 222 245;
-    --hint-bg: 243 238 255; --hint-fg: 76  40 140; --hint-ring: 215 203 247;
-    --flat-bg: 240 236 228; --flat-fg: 122 102 58; --flat-ring: 213 203 186;
+    --c-50:  252 246 228;
+    --c-100: 246 236 205;
+    --c-200: 232 214 160;
+    --c-300: 196 168  92;
+    --c-400: 164 133  52;
+    --c-500: 146 117  42;
+    --c-600: 201 168  76;   /* the brand gold, for fills */
+    --c-700: 120  94  30;   /* gold as type: 5.6:1 on white */
+    --c-800:  92  72  22;
+    --c-900:  66  52  18;
+    --c-950:  38  30  12;
 
-    --shadow-card: 0 1px 2px rgb(42 36 26 / .06), 0 0 0 1px rgb(42 36 26 / .05);
-    --shadow-lift: 0 10px 28px rgb(42 36 26 / .12);
-    --p1: 168 134  44;  --p2:  37 118 190;  --p3: 112  86 212;  --p4:  22 148  94;
-    --p5: 206 118  28;  --p6: 200  58  86;  --p7:  18 138 140;  --p8: 122 102  58;
+    --on-gold: 8 8 8;
+
+    --ok-bg:  230 248 238; --ok-fg:   10  92  58; --ok-ring:  120 196 160;
+    --warn-bg:254 244 214; --warn-fg: 120  70   0; --warn-ring: 222 176  80;
+    --crit-bg:254 232 232; --crit-fg: 160  20  20; --crit-ring: 230 140 140;
+    --info-bg:232 242 252; --info-fg:  16  70 128; --info-ring: 130 176 222;
+    --hint-bg:242 236 255; --hint-fg:  80  36 150; --hint-ring: 180 160 234;
+    --flat-bg:240 238 233; --flat-fg:  70  64  54; --flat-ring: 190 182 166;
+
+    --shadow-card: 0 1px 2px rgb(20 16 8 / .07);
+    --shadow-lift: 0 0 0 1px rgb(160 138 84), 0 12px 28px rgb(20 16 8 / .14);
+    --p1: 164 128  30;  --p2:  28 106 186;  --p3: 106  76 210;  --p4:  14 140  86;
+    --p5: 204 110  14;  --p6: 196  44  72;  --p7:  10 128 132;  --p8:  86  78  66;
   }
 }
 
@@ -169,21 +207,21 @@
   }
 
   .btn-ghost {
-    @apply border border-slate-300 bg-transparent text-slate-800
-           hover:border-clinic-600 hover:text-clinic-700;
+    @apply border border-slate-300 bg-transparent text-slate-900
+           hover:border-clinic-600 hover:bg-clinic-50 hover:text-clinic-700;
   }
 
   .btn-lg { @apply w-full px-5 py-4 text-base; }
 
   .field {
-    @apply w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-base
+    @apply w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-base
            font-light text-slate-900 placeholder:text-slate-400
-           focus:border-clinic-600 focus:bg-slate-200;
+           focus:border-clinic-600 focus:ring-1 focus:ring-clinic-600;
     letter-spacing: 0.01em;
   }
 
   .label {
-    @apply mb-1.5 block text-xs uppercase tracking-label text-slate-500;
+    @apply mb-1.5 block text-xs uppercase tracking-label text-clinic-700;
   }
 
   .chip {
@@ -255,7 +293,7 @@
   /* Rows and tiles lift very slightly toward the pointer. */
   a.card:hover,
   button.card:hover {
-    @apply border-clinic-300;
+    @apply border-clinic-600;
     transform: translateY(-1px);
   }
 

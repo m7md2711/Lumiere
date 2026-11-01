@@ -64,7 +64,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
             {isOverdue(c) ? <OverduePill /> : null}
             {repeat > 1 ? (
               <span
-                className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-[rgb(var(--warn-fg))] ring-1 ring-amber-900"
+                className="pill t-warn"
                 title="This mobile number has contacted us before"
               >
                 {repeat} cases from this patient
@@ -132,11 +132,11 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           </div>
         ) : null}
         {c.resolution_note ? (
-          <div className="mt-4 rounded-xl bg-emerald-50 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+          <div className="tint t-ok mt-4 rounded-xl p-4">
+            <div className="text-xs uppercase tracking-label">
               Resolution{c.closure_reason ? ` · ${c.closure_reason}` : ""}
             </div>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-emerald-900">{c.resolution_note}</p>
+            <p className="mt-1.5 whitespace-pre-wrap text-sm text-slate-800">{c.resolution_note}</p>
           </div>
         ) : null}
       </section>

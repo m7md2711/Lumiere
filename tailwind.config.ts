@@ -17,6 +17,18 @@ const scale = (name: string) =>
     ])
   );
 
+/**
+ * Lines get their own tokens. `border-slate-200` and `bg-slate-200` share a
+ * step, but a frame and a fill want different colours: in dark the frames
+ * are gold while the fills stay neutral near-black.
+ */
+const lines = (base: Record<string, string>) => ({
+  ...base,
+  100: "rgb(var(--l-100) / <alpha-value>)",
+  200: "rgb(var(--l-200) / <alpha-value>)",
+  300: "rgb(var(--l-300) / <alpha-value>)",
+});
+
 const config: Config = {
   darkMode: ["class", '[data-theme="dark"]'],
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
@@ -41,6 +53,9 @@ const config: Config = {
         arabic: ["var(--font-almarai)", "var(--font-josefin)", "system-ui", "sans-serif"],
       },
       letterSpacing: { brand: "0.18em", label: "0.22em" },
+      borderColor: { slate: lines(scale("s")) },
+      divideColor: { slate: lines(scale("s")) },
+      ringColor: { slate: lines(scale("s")) },
       boxShadow: {
         gold: "var(--shadow-card)",
         lift: "var(--shadow-lift)",

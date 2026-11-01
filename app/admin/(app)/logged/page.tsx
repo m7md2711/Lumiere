@@ -93,7 +93,7 @@ export default async function LoggedPage({
               <PriorityPill priority={c.priority} />
               {isOverdue(c) ? <OverduePill /> : null}
               {(repeats[c.mobile] ?? 1) > 1 ? (
-                <span className="inline-flex rounded-full bg-amber-950/70 px-2.5 py-1 text-xs text-[rgb(var(--warn-fg))] ring-1 ring-amber-900">
+                <span className="pill t-warn">
                   {repeats[c.mobile]}× patient
                 </span>
               ) : null}

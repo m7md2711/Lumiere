@@ -272,7 +272,7 @@ export default function CaseActions({
               <button className="btn btn-ghost" disabled={pending} aria-busy={pending}>Mark refund processed</button>
             </form>
           ) : refundStatus === "processed" ? (
-            <p className="border-t border-slate-100 pt-4 text-sm text-emerald-700">
+            <p className="border-t border-slate-100 pt-4 text-sm text-[rgb(var(--ok-fg))]">
               Refund processed.
             </p>
           ) : null}

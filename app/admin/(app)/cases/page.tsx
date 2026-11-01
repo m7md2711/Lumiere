@@ -143,7 +143,7 @@ function GroupHeading({
       <h2 className="text-sm uppercase tracking-[0.2em] text-slate-900">{title}</h2>
       <span className="tabular rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">{count}</span>
       <span className="hidden text-xs text-slate-500 sm:inline">{hint}</span>
-      <span className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" aria-hidden />
+      <span className="h-px flex-1 bg-gradient-to-r from-clinic-300 to-transparent" aria-hidden />
       {foldable ? (
         <span className="text-slate-400 transition-transform duration-300 group-open/fold:rotate-180" aria-hidden>▾</span>
       ) : null}
