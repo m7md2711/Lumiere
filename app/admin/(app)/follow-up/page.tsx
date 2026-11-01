@@ -60,13 +60,13 @@ export default async function FollowUpPage() {
             <article
               key={c.id}
               className={[
-                "card p-5",
+                "card case-card p-5",
                 d.overdue ? "border-[rgb(var(--crit-ring))]" : d.today ? "border-clinic-600" : "",
               ].join(" ")}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <AppLink href={`/admin/cases/${c.id}`} className="tabular text-sm text-clinic-700 hover:underline">
+                  <AppLink href={`/admin/cases/${c.id}`} className="ref tabular text-sm text-clinic-700 hover:underline">
                     {c.ref}
                   </AppLink>
                   <div className="mt-1 text-sm text-slate-800">{c.patient_name}</div>

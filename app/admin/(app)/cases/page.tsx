@@ -192,9 +192,9 @@ function CaseGroup({
       {/* Phones: cards */}
       <div className="space-y-3 lg:hidden">
         {rows.map((c) => (
-          <AppLink key={c.id} href={`/admin/cases/${c.id}`} className={`card lift block p-4 ${dim(c.status)}`}>
+          <AppLink key={c.id} href={`/admin/cases/${c.id}`} className={`card case-card block p-4 ${dim(c.status)}`}>
             <div className="flex items-start justify-between gap-3">
-              <span className="tabular text-sm text-clinic-800">{c.ref}</span>
+              <span className="ref tabular text-sm text-clinic-700">{c.ref}</span>
               <StatusPill status={c.status} />
             </div>
             <div className="mt-1.5 text-sm text-slate-800" dir="auto">{c.patient_name}</div>
@@ -222,9 +222,9 @@ function CaseGroup({
           </thead>
           <tbody className="divide-y divide-slate-200">
             {rows.map((c) => (
-              <tr key={c.id} className={`hover:bg-slate-200/40 ${dim(c.status)}`}>
+              <tr key={c.id} className={`case-row ${dim(c.status)}`}>
                 <td className="px-4 py-3 align-top">
-                  <AppLink href={`/admin/cases/${c.id}`} className="tabular text-clinic-700 hover:underline">
+                  <AppLink href={`/admin/cases/${c.id}`} className="case-link ref tabular text-clinic-700">
                     {c.ref}
                   </AppLink>
                 </td>

@@ -345,9 +345,9 @@ export default async function DashboardPage({
           <ul className="mt-3 divide-y divide-slate-200">
             {summary.overdueCases.map((c) => (
               <li key={c.id}>
-                <AppLink href={`/admin/cases/${c.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:text-clinic-700">
+                <AppLink href={`/admin/cases/${c.id}`} className="case-row -mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5">
                   <span className="text-sm">
-                    <span className="tabular text-clinic-700">{c.ref}</span>
+                    <span className="ref tabular text-clinic-700">{c.ref}</span>
                     <span className="ms-2 text-slate-600">{c.branch}</span>
                   </span>
                   <span className="pill t-crit">{c.hoursLate} h late</span>

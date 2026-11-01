@@ -76,10 +76,10 @@ export default async function LoggedPage({
           <AppLink
             key={c.id}
             href={`/admin/cases/${c.id}`}
-            className={`card block p-4 ${rowTone(c.status)}`}
+            className={`card case-card block p-4 ${rowTone(c.status)}`}
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <span className="tabular text-sm text-clinic-700">{c.ref}</span>
+              <span className="ref tabular text-sm text-clinic-700">{c.ref}</span>
               <StatusPill status={c.status} />
             </div>
             <div className="mt-1.5 text-sm text-slate-800">{c.patient_name}</div>

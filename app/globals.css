@@ -401,3 +401,48 @@
 @keyframes lsc-drawer { from { transform: translateX(-100%); } }
 .drawer-in { animation: lsc-drawer .28s cubic-bezier(.22,.8,.3,1) both; }
 @media (prefers-reduced-motion: reduce) { .drawer-in { animation: none; } }
+
+/* ---------------------------------------------------------------- cases
+   Pointing at a case lights it in gold: rows get a gold edge and a wash
+   that fades to the right; cards get a gold frame, a soft gold glow and a
+   sheen that passes across once. The whole row is the link, not only its
+   reference.
+   ------------------------------------------------------------------- */
+@layer components {
+  .case-row {
+    position: relative;
+    transition: background-color .25s ease, box-shadow .25s ease;
+  }
+  .case-row:hover {
+    background-image: linear-gradient(90deg, rgb(var(--c-600) / .16), rgb(var(--c-600) / .04) 55%, transparent);
+    box-shadow: inset 3px 0 0 rgb(var(--c-600));
+  }
+  .case-row .ref { transition: color .2s ease; }
+  .case-row:hover .ref,
+  .case-card:hover .ref { color: rgb(var(--c-800)); }
+
+  /* Stretches a row's link over the whole row. */
+  .case-link::after { content: ""; position: absolute; inset: 0; }
+
+  .case-card {
+    position: relative;
+    overflow: hidden;
+    transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+  }
+  .case-card:hover {
+    border-color: rgb(var(--c-600));
+    box-shadow: 0 0 0 1px rgb(var(--c-600) / .45), 0 12px 32px -10px rgb(var(--c-600) / .45);
+    transform: translateY(-2px);
+  }
+  .case-card::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(110deg, transparent 35%, rgb(var(--c-600) / .14) 50%, transparent 65%);
+    transform: translateX(-100%);
+  }
+  .case-card:hover::before { transform: translateX(100%); transition: transform .8s ease; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case-card, .case-card:hover { transform: none !important; }
+  .case-card::before { display: none; }
+}
