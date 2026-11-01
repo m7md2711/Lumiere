@@ -3,16 +3,16 @@ import { formatDateTime } from "@/lib/time";
 
 /**
  * Dark ground: a dim tinted surface with bright type, never a light chip.
- * The colours follow the workflow rather than decorating it — gold is work
+ * The colours follow the workflow rather than decorating it — blue is work
  * nobody has touched, green is finished, and the stages in between warm up as
  * a case moves. Closed is the only one that also recedes the whole row.
  */
 const statusStyles: Record<string, string> = {
-  new: "t-gold",
-  opened: "t-info",
+  new: "t-info",
+  opened: "t-gold",
   under_review: "t-warn",
   solved: "t-hint",
-  escalated: "t-warn",
+  escalated: "t-crit",
   follow_up: "t-hint",
   closed: "t-ok",
 
@@ -25,7 +25,7 @@ const statusStyles: Record<string, string> = {
 
 const priorityStyles: Record<string, string> = {
   low: "t-flat",
-  normal: "t-info",
+  normal: "t-flat",
   high: "t-warn",
   urgent: "t-crit",
 };
@@ -50,7 +50,7 @@ export function isClosed(status: string): boolean {
 
 export function StatusPill({ status }: { status: string }) {
   return (
-    <span className={`pill ${statusStyles[status] ?? unknownStatus}`}>
+    <span className={`pill pill-dot ${statusStyles[status] ?? unknownStatus}`}>
       {statusLabel(status)}
     </span>
   );

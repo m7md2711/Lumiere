@@ -29,12 +29,12 @@ const kpiIcon: Record<string, (p: { className?: string }) => React.ReactElement>
 };
 
 const statusColour: Record<string, string> = {
-  new: "rgb(var(--p1))",
-  opened: "rgb(var(--p2))",
-  under_review: "rgb(var(--p5))",
-  solved: "rgb(var(--p3))",
-  escalated: "rgb(var(--p6))",
-  follow_up: "rgb(var(--p7))",
+  new: "rgb(var(--info-fg))",
+  opened: "rgb(var(--c-600))",
+  under_review: "rgb(var(--warn-fg))",
+  solved: "rgb(var(--hint-fg))",
+  escalated: "rgb(var(--crit-fg))",
+  follow_up: "rgb(var(--s-500))",
 };
 
 function greeting(): string {
