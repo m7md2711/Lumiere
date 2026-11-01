@@ -305,14 +305,14 @@
    ============================================================ */
 @layer components {
   .roll { display: inline-flex; align-items: baseline; font-variant-numeric: tabular-nums; line-height: 1; }
-  .roll-col { display: inline-block; height: 1em; overflow: hidden; vertical-align: bottom; }
+  .roll-col { display: inline-block; height: 1em; overflow: hidden; vertical-align: bottom; user-select: none; }
   .roll-strip {
     display: flex; flex-direction: column;
     transform: translateY(calc(var(--d) * -1em));
     animation: lsc-roll 1.15s cubic-bezier(.16,.84,.24,1) var(--delay, 0ms) both;
   }
   .roll-strip > span { display: block; height: 1em; line-height: 1; }
-  .roll-static { line-height: 1; }
+  .roll-static { line-height: 1; user-select: none; }
 
   .viz-sweep { animation: lsc-sweep 1.3s cubic-bezier(.22,.8,.24,1) var(--delay, 120ms) both; }
   .viz-seg   { animation: lsc-seg .9s cubic-bezier(.22,.8,.24,1) var(--delay, 150ms) both; }

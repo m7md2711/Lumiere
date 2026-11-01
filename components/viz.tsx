@@ -25,7 +25,9 @@ export function NumberRoll({
 }) {
   const chars = Array.from(text);
   return (
-    <span className={`roll ${className}`} aria-label={text} role="text">
+    <span className={`roll ${className}`}>
+      {/* What a screen reader announces and what copy-paste picks up. */}
+      <span className="sr-only">{text}</span>
       {chars.map((ch, i) =>
         /\d/.test(ch) ? (
           <span
