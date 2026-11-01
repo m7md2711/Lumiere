@@ -1,275 +1,357 @@
-import { db } from "@/lib/supabase";
-import { getBranches } from "@/lib/cases";
-import { categoryLabel } from "@/lib/i18n";
-import { CATEGORIES } from "@/lib/types";
-import { clinicDayStart, clinicMonthStart, formatDayLabel } from "@/lib/time";
 import { redirect } from "next/navigation";
-import { currentSession, sessionBranchId } from "@/lib/auth";
-import { sourceOf, sourceShort, type Source } from "@/lib/sources";
-import { getLocations } from "@/lib/cases";
+import { currentSession } from "@/lib/auth";
+import { getBranches } from "@/lib/cases";
+import { db } from "@/lib/supabase";
+import { computeSummary, TARGET_CLOSE_HOURS, TARGET_RESPONSE_HOURS, type Kpi } from "@/lib/metrics";
 import { serviceDetailsFor, tally } from "@/lib/service-detail";
-import { SERVICE_CONCERN, normalizeCategory } from "@/lib/types";
-import type { Case } from "@/lib/types";
-import Charts from "./Charts";
+import { SERVICE_CONCERN } from "@/lib/types";
+import AppLink from "@/components/AppLink";
+import { Delta, Donut, Meter, NumberRoll, Rings, ScoreGauge, Sparkline } from "@/components/viz";
+import {
+  IconAlert, IconArrows, IconBuilding, IconCalendarCheck, IconCheckCircle, IconClock,
+  IconDoc, IconPlus, IconPulse, IconRepeat, IconSmile, IconList,
+} from "@/components/Icons";
+import DashboardFilters from "./DashboardFilters";
 
 export const dynamic = "force-dynamic";
 
-type Row = Pick<
-  Case,
-  "id" | "branch_id" | "qr_location_id" | "category" | "status" | "priority" | "sla_due_at"
-  | "created_at" | "closed_at" | "refund_amount" | "refund_status" | "satisfaction"
->;
+type Style = React.CSSProperties & Record<`--${string}`, string | number>;
 
-export default async function DashboardPage() {
-  // The call centre has no clinic-wide view; it follows what it raised.
+const kpiIcon: Record<string, (p: { className?: string }) => React.ReactElement> = {
+  response_time: IconClock,
+  close_time: IconCheckCircle,
+  opened_on_time: IconCalendarCheck,
+  clearance: IconArrows,
+  satisfaction: IconSmile,
+  resolved_at_branch: IconBuilding,
+  signed_form: IconDoc,
+  answered_first_time: IconRepeat,
+};
+
+const statusColour: Record<string, string> = {
+  new: "rgb(var(--p1))",
+  opened: "rgb(var(--p2))",
+  under_review: "rgb(var(--p5))",
+  solved: "rgb(var(--p3))",
+  escalated: "rgb(var(--p6))",
+  follow_up: "rgb(var(--p7))",
+};
+
+function greeting(): string {
+  const h = (new Date().getUTCHours() + 4) % 24; // Gulf time
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { days?: string; branch?: string };
+}) {
   const s = await currentSession();
-  if (s?.role === "call_center") redirect("/admin/logged");
+  if (!s) return null;
+  // The call centre has no clinic-wide view; it follows what it raised.
+  if (s.role === "call_center") redirect("/admin/logged");
 
-  const scopeBranchId = await sessionBranchId();
+  const days = [7, 30, 90].includes(Number(searchParams.days)) ? Number(searchParams.days) : 30;
+  // A branch is always itself, whatever the address bar says.
+  const branchId = s.role === "branch" ? s.branchId : searchParams.branch || null;
 
-  let query = db()
+  const concernQuery = db()
     .from("cases")
-    .select(
-      "id, branch_id, qr_location_id, category, status, priority, sla_due_at, created_at, closed_at, refund_amount, refund_status, satisfaction"
-    )
-    .order("created_at", { ascending: false })
-    .limit(5000);
-  if (scopeBranchId) query = query.eq("branch_id", scopeBranchId);
-
-  const [allBranches, { data }, allLocations] = await Promise.all([
-    getBranches(), query, getLocations(),
+    .select("id")
+    .in("category", [SERVICE_CONCERN, "treatment", "medical"])
+    .gte("created_at", new Date(Date.now() - days * 86_400_000).toISOString());
+  const [summary, branches, concernRes] = await Promise.all([
+    computeSummary({ branchId, days }),
+    getBranches(),
+    branchId ? concernQuery.eq("branch_id", branchId) : concernQuery,
   ]);
-  const locCode = new Map(allLocations.map((l) => [l.id, l.code]));
-  // A branch session charts only itself, so the per-branch bars stay meaningful.
-  const branches = scopeBranchId
-    ? allBranches.filter((b) => b.id === scopeBranchId)
-    : allBranches;
 
-  const rows = (data ?? []) as Row[];
-  const now = Date.now();
-  const terminal = (s: string) => s === "closed";
+  const concernIds = ((concernRes.data ?? []) as { id: string }[]).map((r) => r.id);
+  const details = concernIds.length ? await serviceDetailsFor(concernIds) : {};
+  const byMachine = tally(concernIds.map((id) => details[id]?.device ?? "")).slice(0, 5);
+  const byEmployee = tally(concernIds.map((id) => details[id]?.employee ?? "")).slice(0, 5);
 
-  const open = rows.filter((r) => !terminal(r.status)).length;
-  const overdue = rows.filter(
-    (r) => !terminal(r.status) && new Date(r.sla_due_at).getTime() < now
-  ).length;
+  const isAdmin = s.role === "admin";
+  const who = s.role === "branch" ? `${s.branchName} team` : "Administrator";
+  const n = summary.now;
 
-  const monthStart = clinicMonthStart();
-  const resolvedThisMonth = rows.filter(
-    (r) => terminal(r.status) && new Date(r.closed_at ?? r.created_at) >= monthStart
-  ).length;
+  const k = (key: string) => summary.kpis.find((x) => x.key === key)!;
+  const scoreRings = [
+    { label: "Opened on time", value: k("opened_on_time").value, display: k("opened_on_time").display,
+      color: "rgb(var(--p1))", hint: `within ${TARGET_RESPONSE_HOURS} h` },
+    { label: "Time to close", value: k("close_time").score, display: k("close_time").display,
+      color: "rgb(var(--p2))", hint: `target ${TARGET_CLOSE_HOURS} h · score ${k("close_time").score ?? "—"}` },
+    { label: "Satisfaction", value: k("satisfaction").score, display: k("satisfaction").display,
+      color: "rgb(var(--p4))", hint: `${k("satisfaction").items} rated` },
+  ];
 
-  // Average hours from submission to closure, over cases that actually closed.
-  const closed = rows.filter((r) => r.closed_at);
-  const avgHours = closed.length
-    ? closed.reduce(
-        (sum, r) =>
-          sum + (new Date(r.closed_at!).getTime() - new Date(r.created_at).getTime()) / 3600_000,
-        0
-      ) / closed.length
-    : 0;
-
-  const refunds = rows.filter((r) => r.refund_amount !== null && r.refund_amount !== undefined);
-  const refundTotal = refunds.reduce((s, r) => s + Number(r.refund_amount ?? 0), 0);
-
-  const rated = rows.filter((r) => r.satisfaction);
-  const avgSatisfaction = rated.length
-    ? rated.reduce((s, r) => s + Number(r.satisfaction), 0) / rated.length
-    : 0;
-
-  const branchName = new Map(branches.map((b) => [b.id, b.name_en]));
-
-  const byBranch = branches.map((b) => {
-    const mine = rows.filter((r) => r.branch_id === b.id);
-    return {
-      name: b.code,
-      full: b.name_en,
-      cases: mine.length,
-      open: mine.filter((r) => !terminal(r.status)).length,
-    };
-  });
-
-  const byCategory = CATEGORIES.map((c) => ({
-    name: categoryLabel(c, "en").split(" ").slice(0, 2).join(" "),
-    full: categoryLabel(c, "en"),
-    cases: rows.filter((r) => r.category === c).length,
-  })).filter((d) => d.cases > 0);
-
-  // "Resolved at branch" means it closed without ever needing an escalation.
-  const escalatedIds = new Set(
-    rows.filter((r) => r.status === "escalated").map((r) => r.id)
-  );
-  const resolutionSplit = branches.map((b) => {
-    const mine = rows.filter((r) => r.branch_id === b.id);
-    return {
-      name: b.code,
-      atBranch: mine.filter((r) => !escalatedIds.has(r.id)).length,
-      escalated: mine.filter((r) => escalatedIds.has(r.id)).length,
-    };
-  });
-
-  // Where cases came from. An internally logged complaint never touched the
-  // patient form, so it is worth seeing apart from the self-service ones.
-  const bySource = rows.reduce<Record<Source, number>>(
-    (acc, r) => {
-      const s = sourceOf(locCode.get(r.qr_location_id ?? "") ?? null);
-      acc[s] += 1;
-      return acc;
-    },
-    { patient: 0, branch_manager: 0, call_center: 0 }
-  );
-  const internalTotal = bySource.branch_manager + bySource.call_center;
-  const openInternal = rows.filter(
-    (r) => !terminal(r.status) && sourceOf(locCode.get(r.qr_location_id ?? "") ?? null) !== "patient"
-  ).length;
-
-  // Concerns raised after a service, ranked by machine and by colleague.
-  const concernRows = rows.filter((r) => normalizeCategory(r.category) === SERVICE_CONCERN);
-  const details = concernRows.length
-    ? await serviceDetailsFor(concernRows.map((r) => r.id))
-    : {};
-  const byDevice = tally(concernRows.map((r) => details[r.id]?.device ?? "")).slice(0, 6);
-  const byEmployee = tally(concernRows.map((r) => details[r.id]?.employee ?? "")).slice(0, 6);
-
-  const trend: { name: string; cases: number }[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const day = clinicDayStart(new Date(Date.now() - i * 86_400_000));
-    const next = new Date(day.getTime() + 86_400_000);
-    trend.push({
-      name: formatDayLabel(day),
-      cases: rows.filter((r) => {
-        const t = new Date(r.created_at);
-        return t >= day && t < next;
-      }).length,
-    });
-  }
-
-  const oldest = rows
-    .filter((r) => !terminal(r.status) && new Date(r.sla_due_at).getTime() < now)
-    .slice(0, 5);
+  const attention = [
+    { label: "new, not opened", value: n.new, href: "/admin/cases?status=new", tone: n.new ? "text-clinic-700" : "" },
+    { label: "overdue", value: n.overdue, href: "/admin/cases?overdue=1", tone: n.overdue ? "text-[rgb(var(--crit-fg))]" : "" },
+    { label: "awaiting review", value: n.awaitingReview, href: "/admin/cases?status=solved", tone: n.awaitingReview ? "text-[rgb(var(--hint-fg))]" : "" },
+    { label: "follow-ups due", value: n.followUpDue, href: "/admin/follow-up", tone: n.followUpDue ? "text-[rgb(var(--warn-fg))]" : "" },
+    { label: "escalated", value: n.escalated, href: "/admin/cases?status=escalated", tone: n.escalated ? "text-[rgb(var(--warn-fg))]" : "" },
+  ];
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
+    <div className="space-y-6">
+      {/* ------------------------------------------------------- header */}
+      <header className="rise flex flex-wrap items-end justify-between gap-4" style={{ "--i": 0 } as Style}>
+        <div>
+          <h1 className="title-shine text-3xl uppercase tracking-[0.2em] text-slate-900 sm:text-4xl">
+            Dashboard
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 sm:text-base">
+            {greeting()}, {who}. Here is what needs your attention.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <AppLink href="/admin/new-case" className="btn btn-primary">
+            <IconPlus className="h-4 w-4" /> Raise a complaint
+          </AppLink>
+          <AppLink href="/admin/cases" className="btn btn-ghost">
+            <IconList className="h-4 w-4" /> Cases
+          </AppLink>
+        </div>
+      </header>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <Kpi label="Open cases" value={open} />
-        <Kpi label="Overdue" value={overdue} tone={overdue > 0 ? "danger" : "default"} />
-        <Kpi label="Resolved this month" value={resolvedThisMonth} tone="good" />
-        <Kpi label="Avg resolution" value={avgHours ? `${avgHours.toFixed(1)} h` : "—"} />
-        <Kpi label="Refunds" value={refunds.length} sub={`AED ${refundTotal.toFixed(2)}`} />
-        <Kpi
-          label="Avg satisfaction"
-          value={avgSatisfaction ? `${avgSatisfaction.toFixed(1)} / 5` : "—"}
+      {/* ------------------------------------------------ attention strip */}
+      <section className="card rise flex flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4" style={{ "--i": 1 } as Style}>
+        <span className="flex items-center gap-2 text-sm text-slate-800">
+          <span className="relative flex h-2.5 w-2.5">
+            {n.overdue || n.new ? (
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-clinic-600 opacity-60" />
+            ) : null}
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-clinic-600" />
+          </span>
+          Right now
+        </span>
+        <span className="text-sm text-slate-600">
+          <span className="text-xl text-slate-900"><NumberRoll text={String(n.open)} /></span> open
+        </span>
+        {attention.map((a) => (
+          <AppLink key={a.label} href={a.href} className="group text-sm text-slate-600 hover:text-slate-900">
+            <span className={`text-xl ${a.tone || "text-slate-900"}`}>
+              <NumberRoll text={String(a.value)} delay={120} />
+            </span>{" "}
+            <span className="group-hover:underline">{a.label}</span>
+          </AppLink>
+        ))}
+        <AppLink href="/admin/cases" className="ms-auto text-sm text-clinic-700 hover:underline">
+          Open cases →
+        </AppLink>
+      </section>
+
+      {/* ------------------------------------------------------- filters */}
+      <div className="rise" style={{ "--i": 2 } as Style}>
+        <DashboardFilters
+          days={days}
+          branch={branchId}
+          branches={isAdmin ? branches.filter((b) => b.is_active).map((b) => ({ id: b.id, name: b.name_en })) : []}
         />
       </div>
 
-      <section className="card p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-xs uppercase tracking-label text-slate-500">Where cases come from</h2>
-          <span className="text-xs text-slate-500">
-            {internalTotal} logged by staff · {openInternal} of those still open
-          </span>
+      {/* --------------------------------------------------- performance */}
+      <div className="rise flex flex-wrap items-baseline justify-between gap-2" style={{ "--i": 3 } as Style}>
+        <h2 className="text-lg uppercase tracking-[0.2em] text-slate-900">Performance</h2>
+        <span className="text-xs text-slate-500 sm:text-sm">
+          Last {days} days compared with the {days} days before
+        </span>
+      </div>
+
+      <section className="card rise p-5 sm:p-6" style={{ "--i": 4 } as Style}>
+        <div className="flex flex-wrap items-center gap-6">
+          <ScoreGauge score={summary.score.value} />
+          <div className="min-w-[220px] flex-1">
+            <div className="text-xs uppercase tracking-label text-slate-500">Performance score</div>
+            <div className="mt-1 text-3xl text-slate-900">{summary.score.band}</div>
+            <div className="mt-2">
+              <Delta change={summary.score.change} pointsLabel />
+            </div>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+              The average of the measures below. A speed measure scores 100 when it meets its target
+              and 50 when it takes twice as long; a percentage scores its own value. Measures with
+              nothing to count in the period are left out.
+            </p>
+          </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {(["patient", "branch_manager", "call_center"] as Source[]).map((s) => {
-            const n = bySource[s];
-            const pct = rows.length ? Math.round((n / rows.length) * 100) : 0;
-            return (
-              <div key={s} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs text-slate-500">{sourceShort[s]}</div>
-                <div className="tabular mt-1 text-2xl text-clinic-800">{n}</div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
-                  <div
-                    className={s === "patient" ? "h-full bg-clinic-600" : "h-full bg-clinic-400"}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <div className="tabular mt-1.5 text-xs text-slate-400">{pct}% of all cases</div>
-              </div>
-            );
-          })}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {summary.kpis.map((kp, i) => (
+            <KpiCard key={kp.key} kpi={kp} index={i} />
+          ))}
         </div>
       </section>
 
-      {concernRows.length > 0 ? (
-        <section className="card p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="text-xs uppercase tracking-label text-slate-500">
-              Concerns after a service
-            </h2>
-            <span className="text-xs text-slate-500">
-              {concernRows.length} case{concernRows.length === 1 ? "" : "s"} · where they cluster
-            </span>
-          </div>
+      {/* ------------------------------------------------------- summary */}
+      <div className="rise flex flex-wrap items-baseline justify-between gap-2" style={{ "--i": 5 } as Style}>
+        <h2 className="text-lg uppercase tracking-[0.2em] text-slate-900">At a glance</h2>
+        <span className="text-xs text-slate-500 sm:text-sm">What is coming in, how fast it moves, where it stands</span>
+      </div>
 
-          <div className="mt-4 grid gap-6 sm:grid-cols-2">
-            {[
-              { title: "By machine", data: byDevice },
-              { title: "By employee", data: byEmployee },
-            ].map((block) => (
-              <div key={block.title}>
-                <h3 className="mb-2.5 text-xs text-slate-600">{block.title}</h3>
-                {block.data.length === 0 ? (
-                  <p className="text-sm italic text-slate-400">Nothing recorded yet.</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {block.data.map((d) => (
-                      <li key={d.name}>
-                        <div className="flex items-baseline justify-between gap-3 text-sm">
-                          <span className={d.name === "Not recorded" ? "text-slate-400" : "text-slate-800"}>
-                            {d.name}
-                          </span>
-                          <span className="tabular text-xs text-slate-500">
-                            {d.cases} · {d.share}%
-                          </span>
-                        </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
-                          <div
-                            className={d.name === "Not recorded" ? "h-full bg-slate-300" : "h-full bg-clinic-600"}
-                            style={{ width: `${Math.max(d.share, 3)}%` }}
-                          />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="card lift rise p-5" style={{ "--i": 6 } as Style}>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-label text-slate-500">
+            <IconPulse className="h-4 w-4 text-clinic-600" /> Incoming cases
           </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-4xl text-slate-900"><NumberRoll text={String(summary.incoming.perDay)} delay={150} /></span>
+            <span className="text-sm text-slate-500">a day on average</span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span>{summary.incoming.total} in {days} days · was {summary.incoming.previousTotal}</span>
+          </div>
+          <div className="mt-4">
+            <Sparkline
+              points={summary.incoming.trend.map((t) => t.count)}
+              labels={[summary.incoming.trend[0]?.label ?? "", "Today"]}
+            />
+          </div>
+        </section>
 
-          <p className="mt-4 text-xs text-slate-500">
-            Employee and machine are optional, so &ldquo;not recorded&rdquo; is expected early on.
-            The ranking is only as good as what the branches fill in.
-          </p>
+        <section className="card lift rise p-5" style={{ "--i": 7 } as Style}>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-label text-slate-500">
+            <IconClock className="h-4 w-4 text-clinic-600" /> Speed and outcome
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-slate-500">Avg time to open</div>
+              <div className="text-2xl text-slate-900"><NumberRoll text={k("response_time").display} delay={150} /></div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Avg time to close</div>
+              <div className="text-2xl text-slate-900"><NumberRoll text={k("close_time").display} delay={220} /></div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <Rings rings={scoreRings} size={128} />
+          </div>
+        </section>
+
+        <section className="card lift rise p-5" style={{ "--i": 8 } as Style}>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-label text-slate-500">
+            <IconAlert className="h-4 w-4 text-clinic-600" /> Where open cases stand
+          </div>
+          <div className="mt-4">
+            <Donut
+              slices={summary.openByStatus}
+              center={String(summary.openByStatus.reduce((a, b) => a + b.count, 0))}
+              centerLabel="still open"
+              colorOf={(key) => statusColour[key] ?? "rgb(var(--p8))"}
+            />
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="card lift rise p-5" style={{ "--i": 9 } as Style}>
+          <div className="text-xs uppercase tracking-label text-slate-500">What patients raise</div>
+          <div className="mt-4">
+            <Donut slices={summary.byCategory} center={String(summary.incoming.total)} centerLabel={`in ${days} days`} />
+          </div>
+        </section>
+        <section className="card lift rise p-5" style={{ "--i": 10 } as Style}>
+          <div className="text-xs uppercase tracking-label text-slate-500">How they reached us</div>
+          <div className="mt-4">
+            <Donut
+              slices={summary.bySource}
+              center={String(summary.incoming.total)}
+              centerLabel="cases"
+              colorOf={(key) =>
+                key === "patient" ? "rgb(var(--p1))" : key === "branch_manager" ? "rgb(var(--p3))" : "rgb(var(--p2))"
+              }
+            />
+          </div>
+        </section>
+      </div>
+
+      {/* -------------------------------------------------- by branch */}
+      {summary.byBranch.length > 1 ? (
+        <section className="card rise p-5" style={{ "--i": 11 } as Style}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="text-xs uppercase tracking-label text-slate-500">By branch</div>
+            <div className="flex gap-4 text-xs text-slate-500">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-clinic-600" /> received</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: "rgb(var(--p6))" }} /> open now</span>
+            </div>
+          </div>
+          <ul className="mt-4 grid gap-x-8 gap-y-3 md:grid-cols-2">
+            {(() => {
+              const max = Math.max(1, ...summary.byBranch.map((b) => Math.max(b.received, b.open)));
+              return summary.byBranch
+                .slice()
+                .sort((a, b) => b.received - a.received)
+                .map((b, i) => (
+                  <li key={b.branchId}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="truncate text-slate-800">{b.name}</span>
+                      <span className="tabular text-xs text-slate-500">{b.received} · {b.open} open</span>
+                    </div>
+                    <div className="mt-1.5 space-y-1">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+                        <div className="viz-grow h-full rounded-full bg-clinic-600"
+                             style={{ width: `${(b.received / max) * 100}%`, "--delay": `${200 + i * 40}ms` } as Style} />
+                      </div>
+                      <div className="h-1 overflow-hidden rounded-full bg-slate-200">
+                        <div className="viz-grow h-full rounded-full"
+                             style={{ width: `${(b.open / max) * 100}%`, background: "rgb(var(--p6))", "--delay": `${260 + i * 40}ms` } as Style} />
+                      </div>
+                    </div>
+                  </li>
+                ));
+            })()}
+          </ul>
         </section>
       ) : null}
 
-      <Charts
-        byBranch={byBranch}
-        byCategory={byCategory}
-        resolutionSplit={resolutionSplit}
-        trend={trend}
-      />
+      {/* --------------------------------------- concerns after a service */}
+      {concernIds.length > 0 ? (
+        <section className="card rise p-5" style={{ "--i": 12 } as Style}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="text-xs uppercase tracking-label text-slate-500">Concerns after a service</div>
+            <span className="text-xs text-slate-500">{concernIds.length} in {days} days · where they cluster</span>
+          </div>
+          <div className="mt-4 grid gap-6 sm:grid-cols-2">
+            {[{ title: "By machine", data: byMachine }, { title: "By employee", data: byEmployee }].map((block) => (
+              <div key={block.title}>
+                <h3 className="mb-2.5 text-xs text-slate-600">{block.title}</h3>
+                <ul className="space-y-2">
+                  {block.data.map((d, i) => (
+                    <li key={d.name}>
+                      <div className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className={d.name === "Not recorded" ? "text-slate-400" : "text-slate-800"}>{d.name}</span>
+                        <span className="tabular text-xs text-slate-500">{d.cases} · {d.share}%</span>
+                      </div>
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className={`viz-grow h-full rounded-full ${d.name === "Not recorded" ? "bg-slate-300" : "bg-clinic-600"}`}
+                          style={{ width: `${Math.max(d.share, 3)}%`, "--delay": `${300 + i * 60}ms` } as Style}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-      {oldest.length ? (
-        <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Needs attention now
-          </h2>
-          <ul className="divide-y divide-slate-100 text-sm">
-            {oldest.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
-                <a
-                  href={`/admin/cases/${r.id}`}
-                  className="font-medium text-clinic-700 hover:underline"
-                >
-                  {branchName.get(r.branch_id) ?? "—"} · {categoryLabel(r.category, "en")}
-                </a>
-                <span className="whitespace-nowrap text-xs font-medium text-rose-600">
-                  {Math.floor((now - new Date(r.sla_due_at).getTime()) / 3600_000)} h overdue
-                </span>
+      {/* ------------------------------------------------ needs attention */}
+      {summary.overdueCases.length > 0 ? (
+        <section className="card rise p-5" style={{ "--i": 13 } as Style}>
+          <div className="text-xs uppercase tracking-label text-slate-500">Past the 24-hour response time</div>
+          <ul className="mt-3 divide-y divide-slate-200">
+            {summary.overdueCases.map((c) => (
+              <li key={c.id}>
+                <AppLink href={`/admin/cases/${c.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:text-clinic-700">
+                  <span className="text-sm">
+                    <span className="tabular text-clinic-700">{c.ref}</span>
+                    <span className="ms-2 text-slate-600">{c.branch}</span>
+                  </span>
+                  <span className="pill t-crit">{c.hoursLate} h late</span>
+                </AppLink>
               </li>
             ))}
           </ul>
@@ -279,21 +361,32 @@ export default async function DashboardPage() {
   );
 }
 
-function Kpi({
-  label, value, sub, tone = "default",
-}: {
-  label: string;
-  value: number | string;
-  sub?: string;
-  tone?: "default" | "good" | "danger";
-}) {
-  const toneClass =
-    tone === "danger" ? "text-rose-600" : tone === "good" ? "text-emerald-600" : "text-clinic-800";
+function KpiCard({ kpi, index }: { kpi: Kpi; index: number }) {
+  const Icon = kpiIcon[kpi.key] ?? IconPulse;
+  const unit = kpi.better === "lower" ? "%" : kpi.key === "satisfaction" ? "" : " pts";
   return (
-    <div className="card p-4">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className={`tabular mt-1.5 text-2xl font-bold ${toneClass}`}>{value}</div>
-      {sub ? <div className="tabular mt-0.5 text-xs text-slate-400">{sub}</div> : null}
+    <div
+      className="lift rise rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
+      style={{ "--i": 5 + index * 0.6 } as Style}
+      title={`${kpi.hint}. Target ${kpi.target}.`}
+    >
+      <div className="flex items-center gap-2 text-xs text-slate-500">
+        <Icon className="h-4 w-4 text-clinic-600" />
+        {kpi.label}
+      </div>
+      <div className="mt-2 text-3xl text-slate-900">
+        {kpi.value === null ? "—" : <NumberRoll text={kpi.display} delay={300 + index * 70} />}
+      </div>
+      <div className="mt-0.5 text-xs text-slate-500">was {kpi.previousDisplay}</div>
+      <div className="mt-3">
+        <Meter value={kpi.score} delay={350 + index * 70} />
+      </div>
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+        <span>
+          score {kpi.score ?? "—"} · {kpi.items} item{kpi.items === 1 ? "" : "s"}
+        </span>
+        <Delta change={kpi.change} unit={unit} />
+      </div>
     </div>
   );
 }

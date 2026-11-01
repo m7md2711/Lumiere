@@ -18,6 +18,7 @@ import {
 import { listCases } from "@/lib/cases";
 import { generateBranchLogins, generateCallCentreLogin, type GeneratedLogin } from "@/lib/users";
 import { audit } from "@/lib/audit";
+import { createApiKey, revokeApiKey } from "@/lib/apikeys";
 import { clearFollowUp, setFollowUp } from "@/lib/followup";
 import { clinicDayStart } from "@/lib/time";
 import { getSmtp, saveSmtp, setBranchEmail, writeJson, type SmtpSettings } from "@/lib/settings";
@@ -1140,5 +1141,31 @@ export async function removeEvidence(formData: FormData): Promise<ActionResult> 
   await addEvent(caseId, "evidence", `Signed-form file removed by ${adminUser()}: ${gone.name}`);
   await audit("evidence_removed", adminUser(), { detail: gone.name });
   refresh(caseId);
+  return { ok: true };
+}
+
+// ------------------------------------------------------------ API keys
+
+export type NewKeyResult = { ok: true; key: string; name: string } | { ok: false; error: string };
+
+export async function createManagementKey(formData: FormData): Promise<NewKeyResult> {
+  await requireAdmin();
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60);
+  const branchId = String(formData.get("branch") ?? "").trim() || null;
+  if (!name) return { ok: false, error: "Name the key after the system that will use it." };
+
+  const { key } = await createApiKey({ name, branchId, createdBy: adminUser() });
+  await audit("api_key_created", adminUser(), { detail: `${name}${branchId ? " (one branch)" : " (clinic-wide)"}` });
+  revalidatePath("/admin/api");
+  return { ok: true, key, name };
+}
+
+export async function revokeManagementKey(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const gone = await revokeApiKey(id);
+  if (!gone) return { ok: false, error: "That key is already revoked." };
+  await audit("api_key_revoked", adminUser(), { detail: gone.name });
+  revalidatePath("/admin/api");
   return { ok: true };
 }

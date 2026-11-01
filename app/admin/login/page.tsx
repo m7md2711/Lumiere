@@ -16,7 +16,7 @@ export default function LoginPage({
     "use server";
     const user = String(formData.get("username") ?? "");
     const pass = String(formData.get("password") ?? "");
-    const next = String(formData.get("next") ?? "/admin/cases");
+    const next = String(formData.get("next") ?? "/admin/dashboard");
 
     const identity = await authenticate(user, pass);
     if (!identity) {
@@ -35,8 +35,10 @@ export default function LoginPage({
         : "Branch staff",
     });
     // The call centre has no clinic-wide case list; send it where it works.
-    const home = identity.role === "call_center" ? "/admin/logged" : "/admin/cases";
-    redirect(next.startsWith("/admin") && next !== "/admin/cases" ? next : home);
+    const home = identity.role === "call_center" ? "/admin/logged" : "/admin/dashboard";
+    // A deep link survives sign-in; a bare visit opens on the dashboard.
+    const deep = next.startsWith("/admin/") && !["/admin", "/admin/cases"].includes(next);
+    redirect(deep ? next : home);
   }
 
   return (
@@ -51,7 +53,7 @@ export default function LoginPage({
       </div>
 
       <form action={signIn} className="card space-y-4 p-6">
-        <input type="hidden" name="next" value={searchParams.next ?? "/admin/cases"} />
+        <input type="hidden" name="next" value={searchParams.next ?? "/admin/dashboard"} />
 
         <div>
           <label className="label" htmlFor="username">Username</label>

@@ -47,6 +47,9 @@
 
   --shadow-card: 0 1px 3px rgb(0 0 0 / .7), 0 0 0 1px rgb(201 168 76 / .08);
   --shadow-lift: 0 10px 28px rgb(0 0 0 / .55);
+  /* Chart palette — gold leads; the rest are distinct at a glance. */
+  --p1: 201 168  76;  --p2:  96 172 232;  --p3: 160 140 246;  --p4:  84 196 142;
+  --p5: 240 162  78;  --p6: 232 108 126;  --p7:  70 196 196;  --p8: 168 147 100;
 }
 
 :root[data-theme="light"] {
@@ -87,6 +90,8 @@
 
   --shadow-card: 0 1px 2px rgb(42 36 26 / .06), 0 0 0 1px rgb(42 36 26 / .05);
   --shadow-lift: 0 10px 28px rgb(42 36 26 / .12);
+  --p1: 168 134  44;  --p2:  37 118 190;  --p3: 112  86 212;  --p4:  22 148  94;
+  --p5: 206 118  28;  --p6: 200  58  86;  --p7:  18 138 140;  --p8: 122 102  58;
 }
 
 /* With no explicit choice the viewer's own preference decides. */
@@ -113,6 +118,8 @@
 
     --shadow-card: 0 1px 2px rgb(42 36 26 / .06), 0 0 0 1px rgb(42 36 26 / .05);
     --shadow-lift: 0 10px 28px rgb(42 36 26 / .12);
+    --p1: 168 134  44;  --p2:  37 118 190;  --p3: 112  86 212;  --p4:  22 148  94;
+    --p5: 206 118  28;  --p6: 200  58  86;  --p7:  18 138 140;  --p8: 122 102  58;
   }
 }
 
@@ -260,10 +267,10 @@
 @layer utilities {
   /* Content arriving: a short rise, from a visible resting state. */
   @keyframes lsc-rise {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: none; }
   }
-  .rise { animation: lsc-rise .28s cubic-bezier(.22,.8,.3,1) both; }
+  .rise { animation: lsc-rise .55s cubic-bezier(.22,.8,.3,1) calc(var(--i, 0) * 70ms) both; }
 
   @keyframes lsc-pulse {
     0%, 100% { opacity: 1; }
@@ -289,3 +296,60 @@
   .is-navigating .ref,
   .is-navigating .tabular { @apply text-clinic-600; }
 }
+
+
+/* ============================================================
+   Data motion. Every keyframe names only its `from`; the element's
+   own inline style is where it lands, so the server writes the
+   final value and the browser animates toward it.
+   ============================================================ */
+@layer components {
+  .roll { display: inline-flex; align-items: baseline; font-variant-numeric: tabular-nums; line-height: 1; }
+  .roll-col { display: inline-block; height: 1em; overflow: hidden; vertical-align: bottom; }
+  .roll-strip {
+    display: flex; flex-direction: column;
+    transform: translateY(calc(var(--d) * -1em));
+    animation: lsc-roll 1.15s cubic-bezier(.16,.84,.24,1) var(--delay, 0ms) both;
+  }
+  .roll-strip > span { display: block; height: 1em; line-height: 1; }
+  .roll-static { line-height: 1; }
+
+  .viz-sweep { animation: lsc-sweep 1.3s cubic-bezier(.22,.8,.24,1) var(--delay, 120ms) both; }
+  .viz-seg   { animation: lsc-seg .9s cubic-bezier(.22,.8,.24,1) var(--delay, 150ms) both; }
+  .viz-draw  { animation: lsc-draw 1.4s cubic-bezier(.4,.1,.2,1) .25s both; }
+  .viz-fade  { animation: lsc-fade .9s ease .7s both; }
+  .viz-pop   { animation: lsc-pop .4s cubic-bezier(.3,1.6,.5,1) 1.55s both; transform-box: fill-box; transform-origin: center; }
+  .viz-grow  { animation: lsc-grow 1s cubic-bezier(.22,.8,.24,1) var(--delay, 200ms) both; transform-origin: left; }
+
+
+  .lift { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+}
+
+@keyframes lsc-roll  { from { transform: translateY(0); } }
+@keyframes lsc-sweep { from { stroke-dashoffset: var(--c); } }
+@keyframes lsc-seg   { from { stroke-dasharray: 0 var(--c); } }
+@keyframes lsc-draw  { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes lsc-fade  { from { opacity: 0; } }
+@keyframes lsc-pop   { from { transform: scale(0); } }
+@keyframes lsc-grow  { from { transform: scaleX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-strip, .viz-sweep, .viz-seg, .viz-draw, .viz-fade, .viz-pop, .viz-grow, .rise {
+    animation: none !important;
+  }
+  .viz-draw { stroke-dasharray: none; }
+}
+
+/* The dashboard title draws a gold line beneath itself as the page opens. */
+.title-shine { position: relative; display: inline-block; }
+.title-shine::after {
+  content: ""; position: absolute; left: 0; bottom: -8px; height: 2px; width: 64px;
+  background: linear-gradient(90deg, rgb(var(--c-400)), rgb(var(--c-800)), transparent);
+  transform-origin: left; animation: lsc-grow .9s cubic-bezier(.22,.8,.24,1) .2s both;
+}
+@media (prefers-reduced-motion: reduce) { .title-shine::after { animation: none; } }
+
+@keyframes lsc-drawer { from { transform: translateX(-100%); } }
+.drawer-in { animation: lsc-drawer .28s cubic-bezier(.22,.8,.3,1) both; }
+@media (prefers-reduced-motion: reduce) { .drawer-in { animation: none; } }

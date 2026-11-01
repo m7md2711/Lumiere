@@ -23,7 +23,7 @@ export type AuditAction =
   | "signin" | "signin_failed" | "signout"
   | "export" | "password_change" | "branch_logins"
   | "archive_prepared" | "archive_deleted"
-  | "smtp_settings" | "branch_added" | "intake_codes" | "case_deleted" | "case_logged" | "follow_up_set" | "reminder_sent" | "category_merge" | "cases_merged" | "evidence_removed" | "keepalive";
+  | "smtp_settings" | "branch_added" | "intake_codes" | "case_deleted" | "case_logged" | "follow_up_set" | "reminder_sent" | "category_merge" | "cases_merged" | "evidence_removed" | "api_key_created" | "api_key_revoked" | "keepalive";
 
 export type AuditEntry = {
   at: string;
@@ -137,5 +137,7 @@ export const actionLabels: Record<AuditAction, string> = {
   category_merge: "Merged the service topics",
   cases_merged: "Closed duplicate cases together",
   evidence_removed: "Removed a signed-form file",
+  api_key_created: "Created an API key",
+  api_key_revoked: "Revoked an API key",
   keepalive: "Scheduled check",
 };
