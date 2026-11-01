@@ -22,8 +22,8 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   const c = await getCaseScoped(params.id);
   if (!c) notFound();
 
-  // Looking at a case is the response, so the clock stops here. No-ops unless
-  // the case is still `new`.
+  // The branch looking at its own case is the response, so the clock stops
+  // here. No-ops for admin and call centre, and unless the case is still `new`.
   await markOpened(c.id);
 
   const [events, session, evidence, repeat, service, related] = await Promise.all([

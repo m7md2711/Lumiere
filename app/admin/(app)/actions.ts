@@ -585,19 +585,21 @@ export async function createBranchLogins(formData: FormData): Promise<LoginsResu
 }
 
 /**
- * Called when a branch first opens a case. Viewing it is the response, so the
- * clock stops here rather than waiting for someone to remember to set a status.
+ * Called when a case is viewed. Only the case's own branch opening it counts
+ * as the response: the admin or call centre looking at it leaves it "New
+ * case", so the branch's response clock keeps running until they see it.
  */
 export async function markOpened(caseId: string): Promise<void> {
   try {
     const session = await currentSession();
-    if (!session) return;
+    if (!session || session.role !== "branch") return;
 
-    const { data } = await db().from("cases").select("status").eq("id", caseId).maybeSingle();
-    if ((data as { status: Status } | null)?.status !== "new") return;
+    const { data } = await db().from("cases").select("status, branch_id").eq("id", caseId).maybeSingle();
+    const row = data as { status: Status; branch_id: string } | null;
+    if (row?.status !== "new" || row.branch_id !== session.branchId) return;
 
     await db().from("cases").update({ status: "opened" }).eq("id", caseId);
-    await addEvent(caseId, "status", `Opened by ${session.username}.`);
+    await addEvent(caseId, "status", `Opened by ${session.branchName} branch (${session.username}).`);
     revalidatePath("/admin/cases");
   } catch {
     // Opening a case must never fail because of bookkeeping.
