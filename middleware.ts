@@ -24,4 +24,6 @@ export async function middleware(req: NextRequest) {
   return NextResponse.redirect(url);
 }
 
-export const config = { matcher: ["/admin/:path*"] };
+// The sign-in page is left out entirely: it is static and served from the CDN,
+// so visits to it should not cost even an edge function.
+export const config = { matcher: ["/admin", "/admin/((?!login(?:/|$)).*)"] };

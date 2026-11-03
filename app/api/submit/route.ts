@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createCase } from "@/lib/cases";
+import { clientIp, submitAllowedForIp, submitAllowedForMobile } from "@/lib/ratelimit";
 import { CATEGORIES } from "@/lib/types";
 import type { Category, ContactMethod, Lang, PreferredTime } from "@/lib/types";
 
@@ -11,11 +12,34 @@ export const dynamic = "force-dynamic";
 const MAX_VOICE_BASE64 = 6 * 1024 * 1024;
 
 export async function POST(req: Request) {
+  // Cheap checks first, so a flood is turned away before any work is done.
+  const length = Number(req.headers.get("content-length") ?? 0);
+  if (length > MAX_VOICE_BASE64 + 64 * 1024) {
+    return NextResponse.json({ error: "TOO_LARGE" }, { status: 413 });
+  }
+  const limited = submitAllowedForIp(clientIp());
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "TOO_MANY_REQUESTS" },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 });
+  }
+
+  // A field people never see. Only a bot filling every input sets it; it gets
+  // an answer that looks like success so it has no reason to try again.
+  if (String(body.website ?? "").trim()) {
+    return NextResponse.json({ ref: "LSC-RECEIVED" });
+  }
+
+  if (!(await submitAllowedForMobile(String(body.mobile ?? "")))) {
+    return NextResponse.json({ error: "TOO_MANY_REQUESTS" }, { status: 429 });
   }
 
   const category = String(body.category ?? "");

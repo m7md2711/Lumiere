@@ -6,6 +6,7 @@ import {
   ensureInternalLocations, type Channel, type IntakeCodes,
 } from "@/lib/sources";
 import { CATEGORIES } from "@/lib/types";
+import { clientIp, hit } from "@/lib/ratelimit";
 import type { Category, ContactMethod, Lang, PreferredTime } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -17,6 +18,19 @@ export const dynamic = "force-dynamic";
  * internal complaints apart from the ones patients sent themselves.
  */
 export async function POST(req: Request) {
+  // Staff log many cases from one office address, so the limit is generous —
+  // it is there to stop a script, not a busy shift.
+  const limited = hit(`intake:${clientIp()}`, 60, 10 * 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "TOO_MANY_REQUESTS" },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
+    );
+  }
+  if (Number(req.headers.get("content-length") ?? 0) > 64 * 1024) {
+    return NextResponse.json({ error: "TOO_LARGE" }, { status: 413 });
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;

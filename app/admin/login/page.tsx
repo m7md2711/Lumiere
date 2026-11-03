@@ -4,19 +4,29 @@ import { SubmitButton } from "@/components/SubmitButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import { authenticate, issueSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { LOGIN_WINDOW_MIN, clientIp, loginAllowed } from "@/lib/ratelimit";
+import LoginNotice from "./LoginNotice";
 
-export const dynamic = "force-dynamic";
+/**
+ * Static on purpose: the page is served from the CDN, so a flood of visits to
+ * it never reaches a server. Everything that varies per visitor — the deep
+ * link to return to and the error line — is read in the browser by
+ * LoginNotice.
+ */
+export const dynamic = "force-static";
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: { next?: string; e?: string };
-}) {
+export default function LoginPage() {
   async function signIn(formData: FormData) {
     "use server";
     const user = String(formData.get("username") ?? "");
     const pass = String(formData.get("password") ?? "");
     const next = String(formData.get("next") ?? "/admin/dashboard");
+
+    // Too many attempts from one address: refuse before checking anything,
+    // and do not log each refusal — that would let a flood fill the log.
+    if (!(await loginAllowed(clientIp()))) {
+      redirect(`/admin/login?e=locked&next=${encodeURIComponent(next)}`);
+    }
 
     const identity = await authenticate(user, pass);
     if (!identity) {
@@ -54,7 +64,6 @@ export default function LoginPage({
       </div>
 
       <form action={signIn} className="card space-y-4 p-6">
-        <input type="hidden" name="next" value={searchParams.next ?? "/admin/dashboard"} />
 
         <div>
           <label className="label" htmlFor="username">Username</label>
@@ -72,11 +81,7 @@ export default function LoginPage({
           />
         </div>
 
-        {searchParams.e ? (
-          <p role="alert" className="alert-error">
-            Wrong username or password.
-          </p>
-        ) : null}
+        <LoginNotice lockMinutes={LOGIN_WINDOW_MIN} />
 
         <SubmitButton type="submit" className="btn btn-primary btn-lg" pendingLabel="Signing in…">
           Sign in

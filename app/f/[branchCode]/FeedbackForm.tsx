@@ -116,6 +116,7 @@ export default function FeedbackForm({
           contactMethod,
           preferredTime,
           voice: voicePayload,
+          website: (document.getElementById("lsc-website") as HTMLInputElement | null)?.value ?? "",
         }),
       });
 
@@ -196,6 +197,11 @@ export default function FeedbackForm({
   // ------------------------------------------------------------------- form
   return (
     <Shell rtl={rtl} lang={lang} onLang={setLang} L={L}>
+      {/* Bot trap: off-screen and skipped by keyboards and screen readers. */}
+      <input
+        id="lsc-website" name="website" type="text" tabIndex={-1} autoComplete="off" aria-hidden
+        className="absolute -left-[9999px] h-px w-px opacity-0" defaultValue=""
+      />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="chip">
           <span className="opacity-60">{L.branch}</span> {branchName}
