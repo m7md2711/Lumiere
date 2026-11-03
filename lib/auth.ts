@@ -5,8 +5,8 @@ import { db } from "./supabase";
 import { hashPassword, passwordVersion, verifyPassword } from "./password";
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, sessionCookieOptions } from "./session";
 import {
-  branchUserVersion, findBranchUser, getCallCentreUser, staffUserVersion,
-  verifyBranchUser, verifyCallCentreUser, type BranchUser,
+  branchUserVersion, findBranchUser, findViewerUser, getCallCentreUser, staffUserVersion,
+  verifyBranchUser, verifyCallCentreUser, verifyViewerUser, type BranchUser,
 } from "./users";
 
 export { SESSION_COOKIE, sessionCookieOptions };
@@ -75,6 +75,7 @@ export async function checkCredentials(user: string, pass: string): Promise<bool
 export type Identity =
   | { role: "admin"; username: string; pv: string }
   | { role: "call_center"; username: string; pv: string }
+  | { role: "viewer"; username: string; pv: string }
   | {
       role: "branch"; username: string; pv: string;
       branchId: string; branchCode: string; branchName: string;
@@ -91,6 +92,11 @@ export async function authenticate(user: string, pass: string): Promise<Identity
   const cc = await verifyCallCentreUser(supplied, pass);
   if (cc) {
     return { role: "call_center", username: cc.username, pv: staffUserVersion(cc) };
+  }
+
+  const viewer = await verifyViewerUser(supplied, pass);
+  if (viewer) {
+    return { role: "viewer", username: viewer.username, pv: staffUserVersion(viewer) };
   }
 
   const branchUser: BranchUser | null = await verifyBranchUser(supplied, pass);
@@ -156,6 +162,7 @@ export async function reissueAdminSession(pv: string): Promise<void> {
 export type Session =
   | { role: "admin"; username: string }
   | { role: "call_center"; username: string }
+  | { role: "viewer"; username: string }
   | { role: "branch"; username: string; branchId: string; branchCode: string; branchName: string };
 
 /**
@@ -175,8 +182,17 @@ export const currentSession = cache(async function currentSession(): Promise<Ses
   }
 
   const role =
-    claims.r === "branch" ? "branch" : claims.r === "call_center" ? "call_center" : "admin";
+    claims.r === "branch" ? "branch"
+    : claims.r === "call_center" ? "call_center"
+    : claims.r === "viewer" ? "viewer"
+    : "admin";
   const username = String(claims.u ?? "");
+
+  if (role === "viewer") {
+    const u = await findViewerUser(username);
+    if (!u || claims.pv !== staffUserVersion(u)) return null;
+    return { role: "viewer", username: u.username };
+  }
 
   if (role === "admin") {
     if (claims.pv !== (await currentPasswordVersion())) return null;
@@ -202,11 +218,28 @@ export const currentSession = cache(async function currentSession(): Promise<Ses
   };
 });
 
-/** Any signed-in user. Throws rather than returning null, for server actions. */
+/**
+ * Any signed-in user who may change things. Every server action that writes
+ * goes through here or requireAdmin, so a view-only account is refused at the
+ * server whatever the page shows it.
+ */
 export async function requireSession(): Promise<Session> {
   const s = await currentSession();
   if (!s) throw new Error("Not authenticated.");
+  if (s.role === "viewer") throw new Error("This account is view-only.");
   return s;
+}
+
+/** Any signed-in user, viewers included — for reads such as exports. */
+export async function requireReader(): Promise<Session> {
+  const s = await currentSession();
+  if (!s) throw new Error("Not authenticated.");
+  return s;
+}
+
+/** Sees every branch: the administrator and view-only accounts. */
+export function seesEverything(s: Session | null): boolean {
+  return s?.role === "admin" || s?.role === "viewer";
 }
 
 /** Admin only — branch staff must not reach settings, branches or archiving. */
@@ -225,7 +258,7 @@ export async function sessionBranchId(): Promise<string | null> {
 /** Anyone who may raise a complaint on a patient's behalf. */
 export async function canLogComplaints(): Promise<boolean> {
   const s = await currentSession();
-  return s !== null;
+  return s !== null && s.role !== "viewer";
 }
 
 export async function isSessionValid(): Promise<boolean> {

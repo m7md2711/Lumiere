@@ -26,6 +26,8 @@ export const IconHeart = (p: P) => box(<path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.
 export const IconNote = (p: P) => box(<><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></>, p);
 export const IconList = (p: P) => box(<><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h4" /></>, p);
 export const IconChart = (p: P) => box(<><path d="M4 20h16" /><path d="M7 20v-6M12 20V6M17 20v-9" /></>, p);
+export const IconAnalysis = (p: P) => box(<><path d="M12 3a9 9 0 1 0 9 9h-9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></>, p);
+export const IconEye = (p: P) => box(<><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>, p);
 export const IconQr = (p: P) => box(<><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v.01M20 20v.01M17 20v.01" /></>, p);
 export const IconMic = (p: P) => box(<><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>, p);
 

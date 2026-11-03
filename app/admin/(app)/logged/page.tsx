@@ -27,7 +27,7 @@ export default async function LoggedPage({
   const repeats = await repeatCounts(cases.map((c) => c.mobile));
   const overdue = cases.filter(isOverdue).length;
 
-  const canFilter = session.role === "admin";
+  const canFilter = session.role === "admin" || session.role === "viewer";
   const tabs = [
     { v: "internal", label: "Both" },
     { v: "MGR", label: "Branch manager" },
@@ -44,7 +44,9 @@ export default async function LoggedPage({
             {overdue ? ` · ${overdue} overdue` : ""} · logged on a patient&rsquo;s behalf
           </p>
         </div>
-        <Link href="/admin/new-case" className="btn btn-primary">Raise a complaint</Link>
+        {session.role === "viewer" ? null : (
+          <Link href="/admin/new-case" className="btn btn-primary">Raise a complaint</Link>
+        )}
       </div>
 
       {canFilter ? (

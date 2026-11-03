@@ -4,12 +4,13 @@ import { adminUser } from "@/lib/auth";
 import { formatLongDateTime } from "@/lib/time";
 import { db } from "@/lib/supabase";
 import { archiveLog, getPending, storageStats } from "@/lib/archive";
-import { listBranchUsers } from "@/lib/users";
+import { listBranchUsers, listViewerUsers } from "@/lib/users";
 import { getBranches } from "@/lib/cases";
 import { getSmtp, getBranchEmails, redactSmtp, readJson } from "@/lib/settings";
 import { INTAKE_KEY, defaultIntakeCodes, type IntakeCodes } from "@/lib/sources";
 import ChangePasswordForm from "./ChangePasswordForm";
 import BranchLogins from "./BranchLogins";
+import ViewerLogins from "./ViewerLogins";
 import ActivityLog from "./ActivityLog";
 import Maintenance from "./Maintenance";
 import EmailSettings from "./EmailSettings";
@@ -33,6 +34,7 @@ export default async function SettingsPage() {
     archiveLog(),
     listBranchUsers(),
   ]);
+  const viewers = await listViewerUsers();
 
   const [smtp, branchEmails, allBranches, intake, legacy] = await Promise.all([
     getSmtp(),
@@ -93,6 +95,8 @@ export default async function SettingsPage() {
           username: u.username, updatedAt: u.updatedAt,
         }))}
       />
+
+      <ViewerLogins existing={viewers} />
 
       <StorageMeter stats={stats} />
 

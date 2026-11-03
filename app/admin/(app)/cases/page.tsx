@@ -1,6 +1,6 @@
 import AppLink from "@/components/AppLink";
 import { getBranches, repeatCounts, searchSnippets, type CaseFilters, filterList } from "@/lib/cases";
-import { listCasesScoped, isAdminSession } from "@/lib/scope";
+import { listCasesScoped, seesAllSession } from "@/lib/scope";
 import { categoryLabel, priorityLabel, statusLabel } from "@/lib/i18n";
 import { CATEGORIES, PRIORITIES, STATUSES, isOverdue } from "@/lib/types";
 import type { CaseWithBranch } from "@/lib/types";
@@ -31,7 +31,7 @@ export default async function CasesPage({
   const [branches, cases, admin] = await Promise.all([
     getBranches(),
     listCasesScoped(filters),
-    isAdminSession(),
+    seesAllSession(),
   ]);
   const [repeats, withForm, snippets] = await Promise.all([
     repeatCounts(cases.map((c) => c.mobile)),

@@ -204,3 +204,74 @@ export async function generateCallCentreLogin(): Promise<{ username: string; pas
 
   return { username, password };
 }
+
+// ---------------------------------------------------------------- viewers
+
+/**
+ * View-only accounts: they see everything the administrator sees and can
+ * change nothing. Any number of them, each with its own username, created and
+ * removed by the admin in Settings. Only hashes are stored.
+ */
+const VIEWER_KEY = "viewer_users";
+
+type ViewerStore = Record<string, StaffUser>;
+
+export const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,31}$/;
+
+const readViewers = cache(async function readViewers(): Promise<ViewerStore> {
+  const { data } = await db().from("app_settings").select("value").eq("key", VIEWER_KEY).maybeSingle();
+  const raw = (data as { value: string } | null)?.value;
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as ViewerStore;
+  } catch {
+    return {};
+  }
+});
+
+async function writeViewers(s: ViewerStore): Promise<void> {
+  const { error } = await db()
+    .from("app_settings")
+    .upsert({ key: VIEWER_KEY, value: JSON.stringify(s), updated_at: new Date().toISOString() });
+  if (error) throw error;
+}
+
+export async function listViewerUsers(): Promise<{ username: string; updatedAt: string }[]> {
+  return Object.values(await readViewers())
+    .map(({ username, updatedAt }) => ({ username, updatedAt }))
+    .sort((a, b) => a.username.localeCompare(b.username));
+}
+
+export async function findViewerUser(username: string): Promise<StaffUser | null> {
+  return (await readViewers())[username.trim().toLowerCase()] ?? null;
+}
+
+export async function verifyViewerUser(supplied: string, password: string): Promise<StaffUser | null> {
+  const u = await findViewerUser(supplied);
+  if (!u) return null;
+  return verifyPassword(password, u.hash) ? u : null;
+}
+
+/** True when a username is already taken by any other kind of login. */
+export async function usernameTakenElsewhere(username: string): Promise<boolean> {
+  const name = username.toLowerCase();
+  const [branchUsers, cc] = await Promise.all([listBranchUsers(), getCallCentreUser()]);
+  return (
+    branchUsers.some((u) => u.username === name || u.branchCode.toLowerCase() === name) ||
+    cc?.username === name
+  );
+}
+
+/** Creates the viewer, or resets its password when it already exists. */
+export async function saveViewerUser(username: string, password: string): Promise<void> {
+  const store = await readViewers();
+  const name = username.toLowerCase();
+  store[name] = { username: name, hash: hashPassword(password), updatedAt: new Date().toISOString() };
+  await writeViewers(store);
+}
+
+export async function removeViewerUser(username: string): Promise<void> {
+  const store = await readViewers();
+  delete store[username.toLowerCase()];
+  await writeViewers(store);
+}

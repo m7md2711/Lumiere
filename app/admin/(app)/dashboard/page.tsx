@@ -8,7 +8,7 @@ import { SERVICE_CONCERN } from "@/lib/types";
 import AppLink from "@/components/AppLink";
 import { Delta, Donut, Meter, NumberRoll, Rings, ScoreGauge, Sparkline } from "@/components/viz";
 import {
-  IconAlert, IconArrows, IconBuilding, IconCalendarCheck, IconCheckCircle, IconClock,
+  IconAlert, IconAnalysis, IconArrows, IconBuilding, IconCalendarCheck, IconCheckCircle, IconClock,
   IconDoc, IconPlus, IconPulse, IconRepeat, IconSmile, IconList,
 } from "@/components/Icons";
 import DashboardFilters from "./DashboardFilters";
@@ -72,8 +72,9 @@ export default async function DashboardPage({
   const byMachine = tally(concernIds.map((id) => details[id]?.device ?? "")).slice(0, 5);
   const byEmployee = tally(concernIds.map((id) => details[id]?.employee ?? "")).slice(0, 5);
 
-  const isAdmin = s.role === "admin";
-  const who = s.role === "branch" ? `${s.branchName} team` : "Administrator";
+  // Admin and view-only accounts both see every branch.
+  const isAdmin = s.role === "admin" || s.role === "viewer";
+  const who = s.role === "branch" ? `${s.branchName} team` : s.role === "viewer" ? s.username : "Administrator";
   const n = summary.now;
 
   const k = (key: string) => summary.kpis.find((x) => x.key === key)!;
@@ -107,9 +108,15 @@ export default async function DashboardPage({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <AppLink href="/admin/new-case" className="btn btn-primary">
-            <IconPlus className="h-4 w-4" /> Raise a complaint
-          </AppLink>
+          {s.role === "viewer" ? (
+            <AppLink href="/admin/analysis" className="btn btn-primary">
+              <IconAnalysis className="h-4 w-4" /> Analysis
+            </AppLink>
+          ) : (
+            <AppLink href="/admin/new-case" className="btn btn-primary">
+              <IconPlus className="h-4 w-4" /> Raise a complaint
+            </AppLink>
+          )}
           <AppLink href="/admin/cases" className="btn btn-ghost">
             <IconList className="h-4 w-4" /> Cases
           </AppLink>

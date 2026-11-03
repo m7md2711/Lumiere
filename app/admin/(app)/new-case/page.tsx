@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/auth";
 import { getBranches } from "@/lib/cases";
 import { ensureInternalLocations } from "@/lib/sources";
@@ -12,6 +13,8 @@ export const dynamic = "force-dynamic";
 export default async function NewCasePage() {
   const session = await currentSession();
   if (!session) return null;
+  // View-only accounts raise nothing.
+  if (session.role === "viewer") redirect("/admin/dashboard");
 
   await ensureInternalLocations();
   const branches = (await getBranches()).filter((b) => b.is_active);

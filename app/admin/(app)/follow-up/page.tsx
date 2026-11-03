@@ -130,12 +130,14 @@ export default async function FollowUpPage() {
                 </p>
               ) : null}
 
-              <FollowUpActions
-                id={c.id}
-                mobile={c.mobile}
-                isAdmin={session.role === "admin"}
-                related={(relatedOf[c.id] ?? []).map((r) => ({ id: r.id, ref: r.ref }))}
-              />
+              {session.role === "viewer" ? null : (
+                <FollowUpActions
+                  id={c.id}
+                  mobile={c.mobile}
+                  isAdmin={session.role === "admin"}
+                  related={(relatedOf[c.id] ?? []).map((r) => ({ id: r.id, ref: r.ref }))}
+                />
+              )}
             </article>
           );
         })}

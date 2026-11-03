@@ -32,9 +32,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const name =
     session.role === "admin" ? "Administrator"
     : session.role === "call_center" ? "Call centre"
+    : session.role === "viewer" ? session.username
     : session.branchName;
   const roleLabel =
-    session.role === "admin" ? "Admin" : session.role === "call_center" ? "Call centre" : "Branch";
+    session.role === "admin" ? "Admin"
+    : session.role === "call_center" ? "Call centre"
+    : session.role === "viewer" ? "View only"
+    : "Branch";
 
   return (
     <>

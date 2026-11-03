@@ -16,7 +16,10 @@ import {
   setPending, voiceBytesFor,
 } from "@/lib/archive";
 import { listCases } from "@/lib/cases";
-import { generateBranchLogins, generateCallCentreLogin, type GeneratedLogin } from "@/lib/users";
+import {
+  USERNAME_RE, generateBranchLogins, generateCallCentreLogin, removeViewerUser, saveViewerUser,
+  usernameTakenElsewhere, type GeneratedLogin,
+} from "@/lib/users";
 import { audit } from "@/lib/audit";
 import { createApiKey, revokeApiKey } from "@/lib/apikeys";
 import { clearFollowUp, setFollowUp } from "@/lib/followup";
@@ -867,6 +870,43 @@ export async function createCallCentreLogin(): Promise<LoginsResult> {
   };
 }
 
+
+// ------------------------------------------------------------ view-only users
+
+/**
+ * Creates a view-only login, or sets a new password on an existing one. The
+ * admin chooses the password, so it is checked against the same rules as the
+ * admin's own; existing sessions of that viewer end when it changes.
+ */
+export async function saveViewer(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (!USERNAME_RE.test(username)) {
+    return { ok: false, error: "Use 3–32 lowercase letters, numbers, dots, dashes or underscores." };
+  }
+  if (username === adminUser().toLowerCase() || (await usernameTakenElsewhere(username))) {
+    return { ok: false, error: "That username is already used by another login." };
+  }
+  const problem = validateNewPassword(password, password, "");
+  if (problem) return { ok: false, error: problem };
+
+  await saveViewerUser(username, password);
+  await audit("viewer_saved", adminUser(), { detail: `View-only login "${username}" saved` });
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
+
+export async function removeViewer(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  if (!username) return { ok: false, error: "No username given." };
+  await removeViewerUser(username);
+  await audit("viewer_removed", adminUser(), { detail: `View-only login "${username}" removed` });
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
 
 // ----------------------------------------------------- close duplicates too
 

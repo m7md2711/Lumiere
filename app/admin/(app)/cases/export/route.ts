@@ -1,5 +1,5 @@
 import { casesToCsv, type CaseFilters } from "@/lib/cases";
-import { requireSession } from "@/lib/auth";
+import { requireReader } from "@/lib/auth";
 import { listCasesScoped } from "@/lib/scope";
 import { audit } from "@/lib/audit";
 import { serviceDetailsFor } from "@/lib/service-detail";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
-  const session = await requireSession();
+  const session = await requireReader();
 
   const p = new URL(req.url).searchParams;
   const filters: CaseFilters = {

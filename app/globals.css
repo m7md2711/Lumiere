@@ -368,6 +368,7 @@
   .viz-fade  { animation: lsc-fade .9s ease .7s both; }
   .viz-pop   { animation: lsc-pop .4s cubic-bezier(.3,1.6,.5,1) 1.55s both; transform-box: fill-box; transform-origin: center; }
   .viz-grow  { animation: lsc-grow 1s cubic-bezier(.22,.8,.24,1) var(--delay, 200ms) both; transform-origin: left; }
+  .viz-rise  { animation: lsc-rise-bar .9s cubic-bezier(.22,.8,.24,1) var(--delay, 150ms) both; transform-origin: bottom; }
 
 
   .lift { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
@@ -381,9 +382,10 @@
 @keyframes lsc-fade  { from { opacity: 0; } }
 @keyframes lsc-pop   { from { transform: scale(0); } }
 @keyframes lsc-grow  { from { transform: scaleX(0); } }
+@keyframes lsc-rise-bar { from { transform: scaleY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .roll-strip, .viz-sweep, .viz-seg, .viz-draw, .viz-fade, .viz-pop, .viz-grow, .rise {
+  .roll-strip, .viz-sweep, .viz-seg, .viz-draw, .viz-fade, .viz-pop, .viz-grow, .viz-rise, .rise {
     animation: none !important;
   }
   .viz-draw { stroke-dasharray: none; }

@@ -8,10 +8,16 @@ export default function DashboardFilters({
   days,
   branch,
   branches,
+  basePath = "/admin/dashboard",
+  periods = [7, 30, 90],
+  defaultDays = 30,
 }: {
   days: number;
   branch: string | null;
   branches: { id: string; name: string }[];
+  basePath?: string;
+  periods?: number[];
+  defaultDays?: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -20,15 +26,15 @@ export default function DashboardFilters({
     const p = new URLSearchParams();
     const d = next.days ?? days;
     const b = next.branch === undefined ? branch : next.branch;
-    if (d !== 30) p.set("days", String(d));
+    if (d !== defaultDays) p.set("days", String(d));
     if (b) p.set("branch", b);
-    startTransition(() => router.push(`/admin/dashboard${p.toString() ? `?${p}` : ""}`));
+    startTransition(() => router.push(`${basePath}${p.toString() ? `?${p}` : ""}`));
   }
 
   return (
     <div className="card flex flex-wrap items-center gap-3 p-3">
       <div role="radiogroup" aria-label="Period" className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
-        {[7, 30, 90].map((d) => (
+        {periods.map((d) => (
           <button
             key={d}
             type="button"
@@ -40,7 +46,7 @@ export default function DashboardFilters({
               days === d ? "bg-clinic-600 text-ink" : "text-slate-600 hover:text-slate-900",
             ].join(" ")}
           >
-            {d} days
+            {d === 365 ? "12 months" : `${d} days`}
           </button>
         ))}
       </div>

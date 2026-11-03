@@ -37,6 +37,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
   const isServiceConcern = normalizeCategory(c.category) === SERVICE_CONCERN;
 
   const isAdmin = session?.role === "admin";
+  const viewOnly = session?.role === "viewer";
   // One signed link per file, fetched together.
   const evidenceLinks = await Promise.all(evidence.map((f) => signedUrlFor(f.path)));
   const wa = toWhatsApp(c.mobile);
@@ -184,9 +185,23 @@ export default async function CaseDetail({ params }: { params: { id: string } })
           </p>
         )}
 
-        <EvidenceUploader caseId={c.id} />
+        {viewOnly ? null : <EvidenceUploader caseId={c.id} />}
       </section>
 
+      {viewOnly ? (
+        <section className="card flex flex-wrap items-center justify-between gap-3 p-5">
+          <p className="text-sm text-slate-600">
+            You are signed in with a view-only account — this case can be read and exported,
+            not changed.
+          </p>
+          {service && (service.employee || service.device) ? (
+            <p className="text-sm text-slate-700">
+              <span className="label mb-0 inline">Service · </span>
+              {[service.employee, service.device].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
+        </section>
+      ) : (
       <CaseActions
         id={c.id}
         status={c.status}
@@ -199,6 +214,7 @@ export default async function CaseDetail({ params }: { params: { id: string } })
         service={service ? { employee: service.employee, device: service.device } : null}
         related={related.map((r) => ({ id: r.id, ref: r.ref, status: r.status, created_at: r.created_at }))}
       />
+      )}
 
       <section className="card p-5">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">

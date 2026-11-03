@@ -6,11 +6,11 @@ import AppLink from "@/components/AppLink";
 import ThemeToggle from "@/components/ThemeToggle";
 import { LogoMark } from "@/components/Logo";
 import {
-  IconBell, IconBuilding, IconCalendar, IconChart, IconChat, IconChevronsLeft, IconGear,
+  IconAnalysis, IconBell, IconBuilding, IconCalendar, IconChart, IconChat, IconChevronsLeft, IconEye, IconGear,
   IconKey, IconList, IconLogout, IconMenu, IconPlus, IconQr, IconSearch,
 } from "@/components/Icons";
 
-type Role = "admin" | "branch" | "call_center";
+type Role = "admin" | "branch" | "call_center" | "viewer";
 type Counts = { open: number; followDue: number; review: number; overdue: number };
 
 type Item = {
@@ -24,14 +24,17 @@ type Item = {
 const groups: { title: string; items: Item[] }[] = [
   {
     title: "Overview",
-    items: [{ href: "/admin/dashboard", label: "Dashboard", Icon: IconChart, roles: ["admin", "branch"] }],
+    items: [
+      { href: "/admin/dashboard", label: "Dashboard", Icon: IconChart, roles: ["admin", "branch", "viewer"] },
+      { href: "/admin/analysis", label: "Analysis", Icon: IconAnalysis, roles: ["admin", "viewer"] },
+    ],
   },
   {
     title: "Cases",
     items: [
-      { href: "/admin/cases", label: "All cases", Icon: IconList, badge: (c) => c.open, roles: ["admin", "branch"] },
-      { href: "/admin/logged", label: "Raised by staff", Icon: IconChat, roles: ["admin", "branch", "call_center"] },
-      { href: "/admin/follow-up", label: "Follow-up", Icon: IconCalendar, badge: (c) => c.followDue, roles: ["admin", "branch"] },
+      { href: "/admin/cases", label: "All cases", Icon: IconList, badge: (c) => c.open, roles: ["admin", "branch", "viewer"] },
+      { href: "/admin/logged", label: "Raised by staff", Icon: IconChat, roles: ["admin", "branch", "call_center", "viewer"] },
+      { href: "/admin/follow-up", label: "Follow-up", Icon: IconCalendar, badge: (c) => c.followDue, roles: ["admin", "branch", "viewer"] },
     ],
   },
   {
@@ -76,7 +79,7 @@ export default function Shell({
     .map((g) => ({ ...g, items: g.items.filter((i) => i.roles.includes(role)) }))
     .filter((g) => g.items.length);
 
-  const attention = role === "admin" ? counts.overdue + counts.review + counts.followDue : counts.overdue + counts.followDue;
+  const attention = role === "admin" || role === "viewer" ? counts.overdue + counts.review + counts.followDue : counts.overdue + counts.followDue;
   const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "LC";
 
   function toggleCollapse() {
@@ -134,7 +137,15 @@ export default function Shell({
     </nav>
   );
 
-  const cta = (compact: boolean) => (
+  const cta = (compact: boolean) => role === "viewer" ? (
+    <div
+      title={compact ? "View only" : undefined}
+      className={`flex items-center justify-center gap-2 rounded-full border border-clinic-300 py-2.5 text-xs uppercase tracking-brand text-clinic-700 ${compact ? "px-0" : "px-4"}`}
+    >
+      <IconEye className="h-4 w-4" />
+      {!compact ? "View only" : null}
+    </div>
+  ) : (
     <AppLink
       href="/admin/new-case"
       title={compact ? "Raise a complaint" : undefined}
@@ -320,6 +331,13 @@ function MobileBar({
       ? [
           { href: "/admin/logged", label: "My cases", Icon: IconChat, n: 0 },
           { href: "/admin/new-case", label: "Raise", Icon: IconPlus, n: 0 },
+        ]
+      : role === "viewer"
+      ? [
+          { href: "/admin/dashboard", label: "Dashboard", Icon: IconChart, n: 0 },
+          { href: "/admin/cases", label: "Cases", Icon: IconList, n: counts.open },
+          { href: "/admin/analysis", label: "Analysis", Icon: IconAnalysis, n: 0 },
+          { href: "/admin/follow-up", label: "Follow-up", Icon: IconCalendar, n: counts.followDue },
         ]
       : [
           { href: "/admin/dashboard", label: "Dashboard", Icon: IconChart, n: 0 },

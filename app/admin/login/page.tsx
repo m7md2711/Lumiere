@@ -32,6 +32,7 @@ export default function LoginPage({
       detail:
         identity.role === "admin" ? "Administrator"
         : identity.role === "call_center" ? "Call centre"
+        : identity.role === "viewer" ? "View only"
         : "Branch staff",
     });
     // The call centre has no clinic-wide case list; send it where it works.

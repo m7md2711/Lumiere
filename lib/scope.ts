@@ -54,3 +54,9 @@ export async function assertCaseInScope(caseId: string): Promise<void> {
 export async function isAdminSession(): Promise<boolean> {
   return (await currentSession())?.role === "admin";
 }
+
+/** Admin or a view-only account: may look across every branch. */
+export async function seesAllSession(): Promise<boolean> {
+  const role = (await currentSession())?.role;
+  return role === "admin" || role === "viewer";
+}
