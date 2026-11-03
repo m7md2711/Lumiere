@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createCase } from "@/lib/cases";
-import { clientIp, submitAllowedForIp, submitAllowedForMobile } from "@/lib/ratelimit";
+import { clientIp, sharedHit, submitAllowedForIp, submitAllowedForMobile } from "@/lib/ratelimit";
 import { CATEGORIES } from "@/lib/types";
 import type { Category, ContactMethod, Lang, PreferredTime } from "@/lib/types";
 
@@ -38,7 +38,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ref: "LSC-RECEIVED" });
   }
 
-  if (!(await submitAllowedForMobile(String(body.mobile ?? "")))) {
+  // Shared across every server instance, so many instances cannot each let
+  // the same address through: 10 cases per address per 10 minutes overall.
+  if (
+    !(await sharedHit(`submit:${clientIp()}`, 10, 10 * 60_000)) ||
+    !(await submitAllowedForMobile(String(body.mobile ?? "")))
+  ) {
     return NextResponse.json({ error: "TOO_MANY_REQUESTS" }, { status: 429 });
   }
 

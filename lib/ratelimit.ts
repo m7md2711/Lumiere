@@ -120,3 +120,39 @@ export async function submitAllowedForMobile(mobile: string): Promise<boolean> {
     return true;
   }
 }
+
+// ------------------------------------------------------ shared counters
+
+const SHARED_PREFIX = "ratelimit:";
+
+/**
+ * A counter every instance shares, kept in app_settings under one row per
+ * key per window. Costs a read and a write, so it guards only the step that
+ * creates something — after the in-memory limit and validation have already
+ * turned away the cheap traffic. Concurrent requests can both read the same
+ * count; that lets a few extra through, never blocks a real one.
+ */
+export async function sharedHit(key: string, limit: number, windowMs: number): Promise<boolean> {
+  const windowStart = Math.floor(Date.now() / windowMs) * windowMs;
+  const rowKey = `${SHARED_PREFIX}${new Date(windowStart).toISOString()}:${key}`;
+  try {
+    const { data } = await db().from("app_settings").select("value").eq("key", rowKey).maybeSingle();
+    const count = Number((data as { value: string } | null)?.value ?? 0) + 1;
+    await db()
+      .from("app_settings")
+      .upsert({ key: rowKey, value: String(count), updated_at: new Date().toISOString() });
+    return count <= limit;
+  } catch {
+    return true;
+  }
+}
+
+/** Drops finished windows; run from the daily cron. */
+export async function pruneRateLimits(): Promise<void> {
+  const cutoff = new Date(Date.now() - 86_400_000).toISOString();
+  try {
+    await db().from("app_settings").delete().gte("key", SHARED_PREFIX).lt("key", `${SHARED_PREFIX}${cutoff}`);
+  } catch {
+    /* tidy-up only */
+  }
+}

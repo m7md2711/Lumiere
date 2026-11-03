@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { audit, prune } from "@/lib/audit";
+import { pruneRateLimits } from "@/lib/ratelimit";
 import { db } from "@/lib/supabase";
 import { listCases } from "@/lib/cases";
 import { isOverdue } from "@/lib/types";
@@ -19,12 +20,12 @@ export const dynamic = "force-dynamic";
  * Vercel Cron calls this once a day; the write is what matters.
  */
 export async function GET(req: Request) {
+  // Fails closed: this sends reminder emails, so without a secret configured
+  // nobody may call it, rather than everybody.
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization") ?? "";
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const auth = req.headers.get("authorization") ?? "";
+  if (!secret || auth !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -57,6 +58,7 @@ export async function GET(req: Request) {
       detail: `${count ?? 0} branches reachable, ${late.length} overdue, ${ready.length} follow-ups due`,
     });
     await prune();
+    await pruneRateLimits();
 
     return NextResponse.json({
       ok: true, branches: count ?? 0, overdue: late.length, followUps: due.length, at: new Date().toISOString(),
